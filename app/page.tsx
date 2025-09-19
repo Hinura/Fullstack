@@ -302,7 +302,7 @@ export default function HomePage() {
                 <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
                   <BookOpen className="h-5 w-5 text-white" />
                 </div>
-                <span className="font-bold text-xl">LearnSmart</span>
+                <span className="font-bold text-xl">Hinura</span>
               </div>
               <p className="text-sm text-muted-foreground">Adaptive learning platform for students aged 7-18.</p>
             </div>
