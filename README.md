@@ -161,7 +161,7 @@ hinura/
 
 1. **Clone the repository**
 ```bash
-git clone https://github.com/your-team/Hinura.git
+git clone https://github.com/Hinura/Fullstack.git
 cd Hinura
 ```
 
