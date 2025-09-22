@@ -1,102 +1,251 @@
-import Link from "next/link"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Eye, ArrowLeft, BookOpen } from "lucide-react"
+'use client'
 
-export default function login() {
+import { useState, Suspense } from 'react'
+import Link from 'next/link'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { createClient } from '@/lib/supabase/client'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Loader2 } from 'lucide-react'
+
+function SignInContent() {
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const [isLoading, setIsLoading] = useState(false)
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false)
+  const [error, setError] = useState<string | null>(searchParams.get('error'))
+  const [message, setMessage] = useState<string | null>(searchParams.get('message'))
+  
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+
+  const supabase = createClient()
+
+  // Email/Password Login
+  const handleEmailLogin = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setError(null)
+    setMessage(null)
+    
+    if (!email || !password) {
+      setError('Please fill in all fields')
+      return
+    }
+
+    setIsLoading(true)
+
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      })
+
+      if (error) {
+        setError(error.message)
+      } else if (data?.user) {
+        router.push('/dashboard/learn')
+        router.refresh()
+      }
+    } catch {
+      setError('An unexpected error occurred')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleGoogleLogin = async () => {
+    setIsGoogleLoading(true)
+    setError(null)
+
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/api/auth/callback`,
+        },
+      })
+
+      if (error) {
+        setError(error.message)
+      }
+    } catch {
+      setError('Failed to login with Google')
+    } finally {
+      setIsGoogleLoading(false)
+    }
+  }
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
-      {/* Header */}
-      <header className="border-b bg-white/80 backdrop-blur-sm">
-        <div className="container mx-auto px-4 py-4">
+    <div className="min-h-screen bg-gradient-to-br from-cream via-sage-blue/5 to-coral/5">
+      <header className="border-b border-sage-blue/20 bg-cream/95 backdrop-blur-md shadow-sm">
+        <div className="container mx-auto px-4 py-6">
           <div className="flex items-center justify-between">
-            <Link href="/" className="flex items-center space-x-2">
-              <ArrowLeft className="h-5 w-5 text-gray-600" />
-              <span className="text-sm text-gray-600">Back to home</span>
+            <Link
+              href="/"
+              className="flex items-center space-x-3 text-charcoal/70 hover:text-coral transition-colors duration-300 rounded-full px-4 py-2 hover:bg-coral/10"
+            >
+              <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" />
+              </svg>
+              <span className="text-base font-medium">Back to home</span>
             </Link>
-            <Link href="/" className="flex items-center space-x-2">
-              <BookOpen className="h-8 w-8 text-blue-600" />
-              <span className="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                Hinura
-              </span>
+            <Link href="/" className="flex items-center space-x-3">
+              <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-coral to-sage-blue flex items-center justify-center shadow-lg">
+                <svg className="h-6 w-6 text-cream" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2.5}
+                    d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
+                  />
+                </svg>
+              </div>
+              <span className="text-2xl font-bold text-charcoal font-rounded">Hinura</span>
             </Link>
           </div>
         </div>
       </header>
 
-      {/* Main Content */}
-      <main className="container mx-auto px-4 py-16">
+      <main className="container mx-auto px-4 py-20">
         <div className="flex min-h-[calc(100vh-200px)] items-center justify-center">
-          <div className="w-full max-w-md">
-            <Card className="shadow-xl border-0 bg-white/90 backdrop-blur-sm">
-              <CardHeader className="space-y-1 text-center">
-                <CardTitle className="text-2xl font-bold">Welcome back</CardTitle>
-                <CardDescription className="text-gray-600">
-                  Sign in to your LearnSmart account to continue your learning journey
+          <div className="w-full max-w-lg">
+            <Card className="shadow-2xl border-2 border-sage-blue/20 bg-cream/95 backdrop-blur-md rounded-3xl overflow-hidden">
+              <CardHeader className="space-y-6 text-center pb-10 pt-12">
+                <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-sage-blue to-warm-green flex items-center justify-center mx-auto mb-6 shadow-xl">
+                  <svg className="h-10 w-10 text-cream" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2.5}
+                      d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                    />
+                  </svg>
+                </div>
+                <CardTitle className="text-4xl font-bold text-balance text-charcoal font-rounded">
+                  Welcome back
+                </CardTitle>
+                <CardDescription className="text-lg text-charcoal/70 text-pretty leading-relaxed max-w-md mx-auto">
+                  Sign in to your Hinura account to continue your learning journey
                 </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                      Email
-                    </label>
-                    <Input type="email" placeholder="Enter your email" className="h-11" />
+              <CardContent className="space-y-10 px-10 pb-12">
+                {error && (
+                  <Alert className="border-red-200 bg-red-50">
+                    <AlertDescription className="text-red-700">{error}</AlertDescription>
+                  </Alert>
+                )}
+                {message && (
+                  <Alert className="border-green-200 bg-green-50">
+                    <AlertDescription className="text-green-700">{message}</AlertDescription>
+                  </Alert>
+                )}
+                <form onSubmit={handleEmailLogin} className="space-y-8">
+                  <div className="space-y-4">
+                    <label className="text-base font-semibold text-charcoal">Email Address</label>
+                    <Input
+                      type="email"
+                      placeholder="Enter your email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="h-14 text-lg border-2 border-sage-blue/30 focus:border-coral rounded-2xl transition-all duration-300 bg-cream/50 placeholder:text-charcoal/50"
+                    />
                   </div>
 
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                      Password
-                    </label>
+                  <div className="space-y-4">
+                    <label className="text-base font-semibold text-charcoal">Password</label>
                     <div className="relative">
-                      <Input type="password" placeholder="Enter your password" className="h-11 pr-10" />
+                      <Input
+                        type="password"
+                        placeholder="Enter your password"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        className="h-14 text-lg border-2 border-sage-blue/30 focus:border-coral rounded-2xl transition-all duration-300 bg-cream/50 placeholder:text-charcoal/50 pr-14"
+                      />
                       <Button
                         type="button"
                         variant="ghost"
                         size="sm"
-                        className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                        className="absolute right-0 top-0 h-full px-4 hover:bg-transparent rounded-2xl"
                       >
-                        <Eye className="h-4 w-4 text-gray-400" />
+                        <svg
+                          className="h-6 w-6 text-charcoal/50 hover:text-coral transition-colors duration-300"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2.5}
+                            d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                          />
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2.5}
+                            d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                          />
+                        </svg>
                       </Button>
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-2">
+                  <div className="flex items-center justify-between pt-4">
+                    <div className="flex items-center space-x-4">
                       <input
                         type="checkbox"
                         id="remember"
-                        className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        className="h-5 w-5 rounded-lg border-2 border-sage-blue/30 text-coral focus:ring-coral focus:ring-2 accent-coral"
                       />
-                      <label htmlFor="remember" className="text-sm text-gray-600">
+                      <label htmlFor="remember" className="text-base font-medium text-charcoal/70">
                         Remember me
                       </label>
                     </div>
-                    <Link href="/forgot-password" className="text-sm text-blue-600 hover:text-blue-500 hover:underline">
+                    <Link
+                      href="/forgot-password"
+                      className="text-base font-medium text-coral hover:text-warm-green transition-colors duration-300 rounded-full px-3 py-1 hover:bg-coral/10"
+                    >
                       Forgot password?
                     </Link>
                   </div>
 
-                  <Button className="w-full h-11 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
-                    Sign in
+                  <Button
+                    type="submit"
+                    disabled={isLoading}
+                    className="w-full h-14 text-lg font-semibold bg-gradient-to-r from-coral to-warm-green hover:from-coral/90 hover:to-warm-green/90 text-cream rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-500 hover:scale-105 disabled:opacity-50"
+                  >
+                    {isLoading ? (
+                      <>
+                        <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                        Signing in...
+                      </>
+                    ) : (
+                      'Sign in to your account'
+                    )}
                   </Button>
-                </div>
+                </form>
 
                 <div className="relative">
                   <div className="absolute inset-0 flex items-center">
-                    <span className="w-full border-t border-gray-200" />
+                    <span className="w-full border-t-2 border-sage-blue/20" />
                   </div>
-                  <div className="relative flex justify-center text-xs uppercase">
-                    <span className="bg-white px-2 text-gray-500">Or continue with</span>
+                  <div className="relative flex justify-center text-base uppercase">
+                    <span className="bg-cream px-6 text-charcoal/60 font-medium">Or continue with</span>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
-                  <Button variant="outline" className="h-11 bg-transparent">
-                    <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">
+                <div className="grid grid-cols-2 gap-6">
+                  <Button
+                    variant="outline"
+                    onClick={handleGoogleLogin}
+                    disabled={isGoogleLoading}
+                    className="h-14 bg-cream border-2 border-sage-blue/30 hover:bg-sage-blue/10 hover:border-sage-blue/50 transition-all duration-300 hover:scale-105 rounded-2xl disabled:opacity-50"
+                  >
+                    <svg className="mr-2 h-6 w-6" viewBox="0 0 24 24">
                       <path
-                        d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                        d="M22.56 12c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
                         fill="#4285F4"
                       />
                       <path
@@ -112,19 +261,30 @@ export default function login() {
                         fill="#EA4335"
                       />
                     </svg>
-                    Google
+                    {isGoogleLoading ? (
+                      <Loader2 className="h-5 w-5 animate-spin" />
+                    ) : (
+                      <span className="font-medium text-charcoal">Google</span>
+                    )}
                   </Button>
-                  <Button variant="outline" className="h-11 bg-transparent">
-                    <svg className="mr-2 h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M12.017 0C5.396 0 .029 5.367.029 11.987c0 5.079 3.158 9.417 7.618 11.024-.105-.949-.199-2.403.041-3.439.219-.937 1.219-5.160 1.219-5.160s-.312-.623-.312-1.543c0-1.444.83-2.518 1.863-2.518.878 0 1.303.66 1.303 1.450 0 .885-.564 2.207-.854 3.434-.243 1.030.516 1.871 1.530 1.871 1.836 0 3.247-1.935 3.247-4.728 0-2.473-1.776-4.202-4.312-4.202-2.938 0-4.663 2.205-4.663 4.484 0 .887.341 1.838.766 2.357.084.102.096.191.071.295-.078.324-.252 1.026-.287 1.169-.045.186-.145.225-.334.136-1.249-.581-2.03-2.407-2.03-3.874 0-3.154 2.292-6.052 6.608-6.052 3.469 0 6.165 2.473 6.165 5.776 0 3.447-2.173 6.22-5.19 6.22-1.013 0-1.965-.525-2.291-1.148l-.623 2.378c-.226.869-.835 1.958-1.244 2.621.937.29 1.931.446 2.962.446 6.624 0 11.99-5.367 11.99-11.987C24.007 5.367 18.641.001 12.017.001z" />
+                  <Button
+                    variant="outline"
+                    className="h-14 bg-cream border-2 border-sage-blue/30 hover:bg-sage-blue/10 hover:border-sage-blue/50 transition-all duration-300 hover:scale-105 rounded-2xl"
+                  >
+                    <svg className="mr-2 h-6 w-6 text-charcoal" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z" />
                     </svg>
-                    GitHub
+                    <span className="font-medium text-charcoal">GitHub</span>
                   </Button>
                 </div>
-                <div className="text-center text-sm text-gray-600">
-                  Don't have an account?{" "}
-                  <Link href="/auth/register" className="text-blue-600 hover:text-blue-500 hover:underline font-medium">
-                    Sign up
+
+                <div className="text-center text-lg text-charcoal/70">
+                  Don&apos;t have an account?{" "}
+                  <Link
+                    href="/auth/register"
+                    className="text-coral hover:text-warm-green font-semibold transition-colors duration-300 rounded-full px-2 py-1 hover:bg-coral/10"
+                  >
+                    Sign up for free
                   </Link>
                 </div>
               </CardContent>
@@ -133,5 +293,13 @@ export default function login() {
         </div>
       </main>
     </div>
+  )
+}
+
+export default function SignInPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <SignInContent />
+    </Suspense>
   )
 }
