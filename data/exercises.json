@@ -1,0 +1,47 @@
+[
+  {
+    "id": "ex-001",
+    "topic": "arrays",
+    "difficulty": 1,
+    "question": "Which method adds an element to the end of a JavaScript array?",
+    "options": ["push()", "pop()", "shift()", "slice()"],
+    "answer": 0,
+    "tags": ["javascript", "arrays", "basics"]
+  },
+  {
+    "id": "ex-002",
+    "topic": "http",
+    "difficulty": 2,
+    "question": "What is the correct HTTP status code for a successful POST creating a resource?",
+    "options": ["200", "201", "204", "400"],
+    "answer": 1,
+    "tags": ["web", "http", "rest"]
+  },
+  {
+    "id": "ex-003",
+    "topic": "python",
+    "difficulty": 1,
+    "question": "Which keyword is used to define a function in Python?",
+    "options": ["def", "func", "function", "lambda"],
+    "answer": 0,
+    "tags": ["python", "basics"]
+  },
+  {
+    "id": "ex-004",
+    "topic": "databases",
+    "difficulty": 2,
+    "question": "Which SQL statement is used to extract data from a database?",
+    "options": ["GET", "SELECT", "OPEN", "EXTRACT"],
+    "answer": 1,
+    "tags": ["sql", "databases"]
+  },
+  {
+    "id": "ex-005",
+    "topic": "security",
+    "difficulty": 3,
+    "question": "What does XSS stand for?",
+    "options": ["Cross-Site Security", "Cross-Site Scripting", "XML Secure Standard", "X-Server Side"],
+    "answer": 1,
+    "tags": ["security", "web"]
+  }
+]
