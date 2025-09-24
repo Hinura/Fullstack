@@ -114,7 +114,7 @@ export default function HomePage() {
                 className="text-xl px-12 py-8 rounded-full shadow-xl hover:shadow-2xl transition-all duration-500 hover:scale-105 bg-gradient-to-r from-coral to-warm-green hover:from-coral/90 hover:to-warm-green/90 text-cream font-medium"
                 asChild
               >
-                <Link href="/register">
+                <Link href="/auth/register">
                   Start Free Trial
                   <svg className="ml-3 h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M17 8l4 4m0 0l-4 4m4-4H3" />
