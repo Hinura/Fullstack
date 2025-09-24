@@ -2,7 +2,6 @@
 
 Create `README.md` in your root directory:
 
-```markdown
 # 🎮 AI-Driven Gamified Learning Web Platform
 
 An adaptive educational platform for learners aged 7-18, implementing research-backed gamification and personalized learning algorithms.
