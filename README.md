@@ -90,7 +90,7 @@ An adaptive learning platform that:
 - **Package Manager**: pnpm
 
 ## 📁 Project Structure
-
+```markdown
 hinura/
 ├── app/
 │   ├── (auth)/
@@ -147,7 +147,7 @@ hinura/
 ├── package.json
 ├── tailwind.config.ts
 └── tsconfig.json
-
+```
 ## 🚀 Getting Started
 
 ### Prerequisites
