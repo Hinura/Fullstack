@@ -175,24 +175,59 @@ export default function RegisterPage() {
               </Alert>
             )}
             {showEmailConfirmation && (
-              <Alert className="border-blue-200 bg-blue-50">
-                <svg className="h-5 w-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                </svg>
-                <AlertDescription className="text-blue-700">
-                  <div className="space-y-2">
-                    <p className="font-semibold">Check your email!</p>
-                    <p>We&apos;ve sent a confirmation link to <strong>{email}</strong>. Please click the link in your email to verify your account and complete the registration.</p>
-                    <div className="pt-3">
-                      <Button
-                        onClick={() => router.push('/auth/login')}
-                        className="bg-blue-600 hover:bg-blue-700 text-white"
-                      >
-                        Go to Login
-                      </Button>
-                    </div>
+              <Alert className="border-2 border-warm-green/30 bg-warm-green/10 backdrop-blur-sm">
+                <div className="flex items-start space-x-3">
+                  <div className="flex-shrink-0">
+                    <svg className="h-6 w-6 text-warm-green" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                    </svg>
                   </div>
-                </AlertDescription>
+                  <div className="flex-1">
+                    <AlertDescription className="text-warm-green/90">
+                      <div className="space-y-3">
+                        <div>
+                          <h3 className="text-lg font-bold text-warm-green">📧 Check your email!</h3>
+                          <p className="text-base">
+                            We&apos;ve sent a confirmation link to <strong className="text-warm-green">{email}</strong>
+                          </p>
+                        </div>
+
+                        <div className="bg-cream/80 rounded-xl p-4 border border-warm-green/20">
+                          <h4 className="font-semibold text-charcoal mb-2">✨ What happens next?</h4>
+                          <ol className="text-sm text-charcoal/70 space-y-1 list-decimal list-inside">
+                            <li>Check your email inbox (and spam folder)</li>
+                            <li>Click the verification link in the email</li>
+                            <li>You&apos;ll be automatically redirected to your learning dashboard</li>
+                            <li>Start your personalized learning journey!</li>
+                          </ol>
+                        </div>
+
+                        <div className="bg-sage-blue/10 rounded-xl p-3 border border-sage-blue/20">
+                          <p className="text-sm text-sage-blue/80">
+                            <strong>💡 Pro tip:</strong> The verification link expires in 24 hours.
+                            If you don&apos;t see the email within a few minutes, check your spam folder.
+                          </p>
+                        </div>
+
+                        <div className="flex gap-2 pt-2">
+                          <Button
+                            onClick={() => router.push('/auth/login')}
+                            className="bg-warm-green hover:bg-warm-green/90 text-cream"
+                          >
+                            Go to Login
+                          </Button>
+                          <Button
+                            onClick={() => setShowEmailConfirmation(false)}
+                            variant="outline"
+                            className="border-warm-green/30 text-warm-green hover:bg-warm-green/10"
+                          >
+                            Send Another Email
+                          </Button>
+                        </div>
+                      </div>
+                    </AlertDescription>
+                  </div>
+                </div>
               </Alert>
             )}
             <form onSubmit={handleSignUp} className="space-y-8">
