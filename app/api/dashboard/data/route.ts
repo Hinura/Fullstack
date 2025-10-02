@@ -110,11 +110,16 @@ export async function GET() {
       user: {
         id: user.id,
         email: user.email,
+        username: finalProfile?.username,
         fullName: finalProfile?.full_name,
+        birthdate: finalProfile?.birthdate,
         age: finalProfile?.age,
+        pictureUrl: finalProfile?.picture_url,
         points: finalProfile?.points || 0,
         currentLevel: finalProfile?.current_level || 1,
-        streakDays: currentStreak
+        streakDays: currentStreak,
+        createdAt: finalProfile?.created_at,
+        updatedAt: finalProfile?.updated_at
       },
       skillLevels: skillLevelsBySubject,
       stats: {

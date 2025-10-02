@@ -8,6 +8,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Progress } from '@/components/ui/progress'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Loader2 } from 'lucide-react'
+import { useBirthdateCheck } from '@/hooks/useBirthdateCheck'
+import { useEffect } from 'react'
 
 type Subject = 'mathematics' | 'reading' | 'science'
 type QuestionType = 'multiple_choice' | 'true_false'
@@ -30,10 +32,19 @@ interface AssessmentAnswer {
   isCorrect: boolean
 }
 
+interface UserData {
+  id: string
+  email: string
+  fullName: string
+  birthdate?: string
+  age?: number
+}
+
 export default function AssessmentPage() {
   const router = useRouter()
   const supabase = createClient()
 
+  const [userData, setUserData] = useState<UserData | null>(null)
   const [currentStep, setCurrentStep] = useState<'welcome' | 'assessment' | 'results'>('welcome')
   const [currentSubject, setCurrentSubject] = useState<Subject>('mathematics')
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0)
@@ -47,6 +58,40 @@ export default function AssessmentPage() {
     reading: 1,
     science: 1
   })
+
+  // Hook must be called at the top level, before any conditional returns
+  const { canAccess } = useBirthdateCheck({ user: userData, redirectTo: "/dashboard/assessment" })
+
+  // Fetch user data
+  useEffect(() => {
+    const fetchUserData = async () => {
+      try {
+        const response = await fetch("/api/dashboard/data")
+        if (response.ok) {
+          const data = await response.json()
+          setUserData(data.user)
+        }
+      } catch (error) {
+        console.error("Error fetching user data:", error)
+      }
+    }
+
+    fetchUserData()
+  }, [])
+
+  // If user needs to set birthdate, redirect to dashboard
+  if (!canAccess && userData) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-cream via-sage-blue/5 to-coral/5">
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <div className="flex items-center space-x-4 bg-cream/80 backdrop-blur-sm rounded-3xl px-8 py-6 shadow-soft">
+            <Loader2 className="h-8 w-8 animate-spin text-coral" />
+            <span className="text-xl font-medium text-charcoal">Redirecting...</span>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   const subjects: Subject[] = ['mathematics', 'reading', 'science']
   const subjectNames = {
@@ -174,6 +219,13 @@ export default function AssessmentPage() {
       if (currentSubjectIndex < subjects.length - 1) {
         const nextSubject = subjects[currentSubjectIndex + 1]
         setCurrentSubject(nextSubject)
+        await supabase
+          .from('user_assessments')
+          .update({
+            current_subject: nextSubject,
+            current_question_index: 0
+          })
+          .eq('id', assessmentId)
         await loadQuestionsForSubject(nextSubject)
       } else {
         // Finish assessment
