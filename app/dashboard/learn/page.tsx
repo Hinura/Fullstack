@@ -4,11 +4,29 @@ import { useSearchParams } from "next/navigation"
 import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Loader2 } from "lucide-react"
 import DashboardNavigation from "@/components/DashboardNavigation"
+import { useBirthdateCheck } from "@/hooks/useBirthdateCheck"
+
+interface UserData {
+  id: string
+  email: string
+  fullName: string
+  points: number
+  currentLevel: number
+  streakDays: number
+  birthdate?: string
+  age?: number
+}
 
 export default function LearnPage() {
   const searchParams = useSearchParams()
   const [showWelcome, setShowWelcome] = useState(false)
+  const [userData, setUserData] = useState<UserData | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  // Hook must be called at the top level, before any conditional returns
+  const { canAccess } = useBirthdateCheck({ user: userData, redirectTo: "/dashboard/learn" })
 
   useEffect(() => {
     if (searchParams.get("welcome") === "true") {
@@ -18,9 +36,42 @@ export default function LearnPage() {
     }
   }, [searchParams])
 
+  useEffect(() => {
+    fetchUserData()
+  }, [])
+
+  const fetchUserData = async () => {
+    try {
+      const response = await fetch("/api/dashboard/data")
+      if (response.ok) {
+        const data = await response.json()
+        setUserData(data.user)
+      }
+    } catch (error) {
+      console.error("Error fetching user data:", error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // If user needs to set birthdate, redirect to dashboard
+  if (!canAccess && userData) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-cream via-sage-blue/5 to-coral/5">
+        <DashboardNavigation />
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <div className="flex items-center space-x-4 bg-cream/80 backdrop-blur-sm rounded-3xl px-8 py-6 shadow-soft">
+            <Loader2 className="h-8 w-8 animate-spin text-coral" />
+            <span className="text-xl font-medium text-charcoal">Redirecting...</span>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-cream via-sage-blue/5 to-coral/5">
-      <DashboardNavigation />
+      <DashboardNavigation userData={userData} />
 
       <main className="max-w-7xl mx-auto px-6 py-8">
         {showWelcome && (

@@ -2,11 +2,12 @@
 
 import { useSearchParams } from "next/navigation"
 import { useEffect, useState } from "react"
-import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Loader2 } from "lucide-react"
 import DashboardNavigation from "@/components/DashboardNavigation"
+import { Button } from "@/components/ui/button"
+import BirthdateSetup from "@/components/BirthdateSetup"
 
 type Subject = "mathematics" | "reading" | "science"
 
@@ -42,6 +43,7 @@ export default function DashboardPage() {
   const [showWelcome, setShowWelcome] = useState(false)
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null)
   const [loading, setLoading] = useState(true)
+  const [showBirthdateSetup, setShowBirthdateSetup] = useState(false)
 
   const subjects: Subject[] = ["mathematics", "reading", "science"]
   const subjectNames = {
@@ -107,6 +109,13 @@ export default function DashboardPage() {
       if (response.ok) {
         const data = await response.json()
         setDashboardData(data)
+
+        // Check if user needs to set birthdate
+        if (!data.user.birthdate || !data.user.age) {
+          setShowBirthdateSetup(true)
+        } else {
+          setShowBirthdateSetup(false)
+        }
       } else {
         console.error("Failed to fetch dashboard data")
       }
@@ -115,6 +124,12 @@ export default function DashboardPage() {
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleBirthdateSetupComplete = async () => {
+    setShowBirthdateSetup(false)
+    // Refresh dashboard data to get updated user info
+    await fetchDashboardData()
   }
 
   if (loading) {
@@ -152,14 +167,21 @@ export default function DashboardPage() {
     <div className="min-h-screen bg-gradient-to-br from-cream via-sage-blue/5 to-coral/5">
       <DashboardNavigation userData={user} />
 
+      {/* Birthdate Setup Modal */}
+      {showBirthdateSetup && (
+        <BirthdateSetup onComplete={handleBirthdateSetupComplete} />
+      )}
+
       <main className="max-w-7xl mx-auto px-6 py-8">
         {showWelcome && (
           <Alert className="mb-8 border-2 border-warm-green/30 bg-warm-green/10 backdrop-blur-sm rounded-3xl shadow-soft">
             <AlertDescription className="text-warm-green/90">
-              <div className="flex items-start space-x-4 p-2">
+              <div className="flex items-start space-x-4 p-6">
                 <span className="text-3xl">🎉</span>
                 <div>
-                  <h3 className="text-xl font-bold text-warm-green mb-3">Welcome to Hinura!</h3>
+                  <h3 className="text-2xl font-bold text-warm-green mb-3">
+                    Welcome to Hinura!
+                  </h3>
                   {hasCompletedAssessment ? (
                     <p className="text-base leading-relaxed">
                       Great job completing your skill assessment! Your personalized learning journey is ready.
@@ -176,33 +198,33 @@ export default function DashboardPage() {
         )}
 
         <div className="mb-12">
-          <h1 className="text-5xl font-bold text-charcoal mb-4 text-balance leading-tight">
-            Good {new Date().getHours() < 12 ? "morning" : new Date().getHours() < 18 ? "afternoon" : "evening"},{" "}
-            {user.fullName?.split(" ")[0]}! {new Date().getHours() < 12 ? "☀️" : new Date().getHours() < 18 ? "🌤️" : "🌙"}
+          <h1 className="text-4xl font-bold text-charcoal mb-4">
+            Hey {user.fullName.replace(/\b\w/g, c => c.toUpperCase())} 👋
           </h1>
-          <p className="text-xl text-charcoal/70 leading-relaxed max-w-3xl">
+          <p className="text-xl text-charcoal/70">
             {hasCompletedAssessment
               ? "Ready to continue your personalized learning adventure?"
-              : "Let's start by taking your skill assessment to personalize your experience!"}
+              : "Let's start by taking your skill assessment to personalize your experience!"
+            }
           </p>
         </div>
 
         {!hasCompletedAssessment && (
           <Alert className="mb-10 border-2 border-coral/30 bg-coral/10 rounded-3xl shadow-soft">
             <AlertDescription className="text-coral/90">
-              <div className="flex items-center justify-between p-2">
+              <div className="flex items-center justify-between p-6">
                 <div className="flex items-center space-x-4">
                   <span className="text-3xl">🎯</span>
                   <div>
-                    <h3 className="font-bold mb-2 text-lg">Complete Your Skill Assessment</h3>
-                    <p className="leading-relaxed">
+                    <h3 className="text-lg font-bold mb-2">Complete Your Skill Assessment</h3>
+                    <p className="text-base leading-relaxed">
                       Take a quick assessment to personalize your learning experience and get the most out of Hinura!
                     </p>
                   </div>
                 </div>
                 <Button
                   onClick={() => (window.location.href = "/dashboard/assessment")}
-                  className="bg-coral hover:bg-coral/90 text-cream font-semibold px-8 py-3 rounded-2xl transition-all duration-300 hover:scale-105 hover:shadow-lg"
+                  className="bg-coral hover:bg-coral/90 text-cream"
                 >
                   Start Assessment
                 </Button>
@@ -214,37 +236,37 @@ export default function DashboardPage() {
         {hasCompletedAssessment && (
           <>
             <div className="grid md:grid-cols-4 gap-6 mb-12">
-              <div className="bg-cream/95 rounded-3xl p-8 shadow-soft text-center transition-all duration-300 hover:scale-105 hover:shadow-lg group">
-                <div className="w-16 h-16 bg-gradient-to-br from-coral to-warm-green rounded-3xl flex items-center justify-center mx-auto mb-4 group-hover:rotate-6 transition-transform duration-300">
-                  <span className="text-3xl">📚</span>
-                </div>
-                <h3 className="text-3xl font-bold text-coral mb-2">{stats.totalExercises}</h3>
-                <p className="text-charcoal/60 font-medium">Exercises Completed</p>
-              </div>
+              <Card className="p-6 bg-gradient-to-br from-coral/10 to-warm-green/10 border-coral/20 hover:scale-[1.1] transition-all duration-300">
+                <CardContent className="p-0 text-center">
+                  <div className="text-3xl mb-2">📚</div>
+                  <div className="text-2xl font-bold text-charcoal">{stats.totalExercises}</div>
+                  <div className="text-sm text-charcoal/60">Exercises Completed</div>
+                </CardContent>
+              </Card>
 
-              <div className="bg-cream/95 rounded-3xl p-8 shadow-soft text-center transition-all duration-300 hover:scale-105 hover:shadow-lg group">
-                <div className="w-16 h-16 bg-gradient-to-br from-sage-blue to-warm-green rounded-3xl flex items-center justify-center mx-auto mb-4 group-hover:rotate-6 transition-transform duration-300">
-                  <span className="text-3xl">🎯</span>
-                </div>
-                <h3 className="text-3xl font-bold text-sage-blue mb-2">{stats.accuracyPercentage}%</h3>
-                <p className="text-charcoal/60 font-medium">Overall Accuracy</p>
-              </div>
+              <Card className="p-6 bg-gradient-to-br from-warm-green/10 to-sage-blue/10 border-warm-green/20 hover:scale-[1.1] transition-all duration-300">
+                <CardContent className="p-0 text-center">
+                  <div className="text-3xl mb-2">🎯</div>
+                  <div className="text-2xl font-bold text-charcoal">{stats.accuracyPercentage}%</div>
+                  <div className="text-sm text-charcoal/60">Overall Accuracy</div>
+                </CardContent>
+              </Card>
 
-              <div className="bg-cream/95 rounded-3xl p-8 shadow-soft text-center transition-all duration-300 hover:scale-105 hover:shadow-lg group">
-                <div className="w-16 h-16 bg-gradient-to-br from-warm-green to-coral rounded-3xl flex items-center justify-center mx-auto mb-4 group-hover:rotate-6 transition-transform duration-300">
-                  <span className="text-3xl">🔥</span>
-                </div>
-                <h3 className="text-3xl font-bold text-warm-green mb-2">{stats.streakDays}</h3>
-                <p className="text-charcoal/60 font-medium">Day Streak</p>
-              </div>
+              <Card className="p-6 bg-gradient-to-br from-sage-blue/10 to-coral/10 border-sage-blue/20 hover:scale-[1.1] transition-all duration-300">
+                <CardContent className="p-0 text-center">
+                  <div className="text-3xl mb-2">🔥</div>
+                  <div className="text-2xl font-bold text-charcoal">{stats.streakDays}</div>
+                  <div className="text-sm text-charcoal/60">Day Streak</div>
+                </CardContent>
+              </Card>
 
-              <div className="bg-cream/95 rounded-3xl p-8 shadow-soft text-center transition-all duration-300 hover:scale-105 hover:shadow-lg group">
-                <div className="w-16 h-16 bg-gradient-to-br from-sage-blue to-coral rounded-3xl flex items-center justify-center mx-auto mb-4 group-hover:rotate-6 transition-transform duration-300">
-                  <span className="text-3xl">⭐</span>
-                </div>
-                <h3 className="text-3xl font-bold text-sage-blue mb-2">{user.points}</h3>
-                <p className="text-charcoal/60 font-medium">Total Points</p>
-              </div>
+              <Card className="p-6 bg-gradient-to-br from-coral/10 to-sage-blue/10 border-coral/20 hover:scale-[1.1] transition-all duration-300">
+                <CardContent className="p-0 text-center">
+                  <div className="text-3xl mb-2">⭐</div>
+                  <div className="text-2xl font-bold text-charcoal">{user.points}</div>
+                  <div className="text-sm text-charcoal/60">Total Points</div>
+                </CardContent>
+              </Card>
             </div>
 
             <div className="mb-12 bg-cream/95 rounded-3xl p-8 shadow-soft">
@@ -347,12 +369,12 @@ export default function DashboardPage() {
           <div className="bg-cream/95 rounded-3xl p-8 shadow-soft transition-all duration-300 hover:shadow-lg">
             <h3 className="text-2xl font-bold text-charcoal mb-8 flex items-center">
               <span className="mr-4">🎯</span>
-              Today&apos;s Goals
+              Today's Goals
             </h3>
             <div className="space-y-6">
               <div className="p-6 bg-gradient-to-r from-warm-green/10 to-sage-blue/10 rounded-3xl border border-warm-green/20 transition-all duration-300 hover:scale-[1.02]">
                 <div className="flex items-center justify-between mb-4">
-                  <p className="font-bold text-charcoal">Complete 10 exercises</p>
+                  <p className="font-bold text-charcoal text-base">Complete 10 exercises</p>
                   <span className="text-sm font-bold text-warm-green bg-warm-green/10 px-3 py-1 rounded-full">
                     {Math.min(stats.totalExercises * 10, 100)}%
                   </span>
@@ -368,7 +390,7 @@ export default function DashboardPage() {
 
               <div className="p-6 bg-gradient-to-r from-coral/10 to-warm-green/10 rounded-3xl border border-coral/20 transition-all duration-300 hover:scale-[1.02]">
                 <div className="flex items-center justify-between mb-4">
-                  <p className="font-bold text-charcoal">Maintain 85% accuracy</p>
+                  <p className="font-bold text-charcoal text-base">Maintain 85% accuracy</p>
                   <span className="text-sm font-bold text-coral bg-coral/10 px-3 py-1 rounded-full">
                     {stats.accuracyPercentage}%
                   </span>
@@ -380,19 +402,23 @@ export default function DashboardPage() {
                   ></div>
                 </div>
                 <p className="text-sm text-charcoal/60 leading-relaxed">
-                  {stats.accuracyPercentage >= 85 ? "Great job! Above target" : "Keep practicing to improve accuracy"}
+                  {stats.accuracyPercentage >= 85
+                    ? "Great job! Above target"
+                    : "Keep practicing to improve accuracy"
+                  }
                 </p>
               </div>
 
               <div className="p-6 bg-gradient-to-r from-sage-blue/10 to-coral/10 rounded-3xl border border-sage-blue/20 transition-all duration-300 hover:scale-[1.02]">
-                <h4 className="font-bold text-charcoal mb-3 flex items-center">
+                <h4 className="font-bold text-charcoal mb-3 flex items-center text-base">
                   <span className="mr-3">💡</span>
                   Learning Tip
                 </h4>
                 <p className="text-sm text-charcoal/70 leading-relaxed">
                   {hasCompletedAssessment
                     ? "Your adaptive algorithm is working! The difficulty adjusts based on your skill level for optimal learning."
-                    : "Complete your skill assessment to unlock personalized learning recommendations!"}
+                    : "Complete your skill assessment to unlock personalized learning recommendations!"
+                  }
                 </p>
               </div>
             </div>
@@ -400,22 +426,24 @@ export default function DashboardPage() {
         </div>
 
         {hasCompletedAssessment && (
-          <div className="bg-gradient-to-r from-coral/20 via-warm-green/20 to-sage-blue/20 rounded-3xl p-10 text-center border border-warm-green/30 shadow-soft">
-            <h3 className="text-4xl font-bold text-charcoal mb-6 text-balance">Ready to Start Learning?</h3>
-            <p className="text-xl text-charcoal/70 mb-8 max-w-3xl mx-auto leading-relaxed">
-              Your adaptive learning algorithm is ready to provide the perfect challenge level. Choose a subject and
-              let&apos;s make today amazing!
+          <div className="bg-gradient-to-r from-coral/20 via-warm-green/20 to-sage-blue/20 rounded-3xl p-8 text-center border border-warm-green/30 shadow-soft">
+            <h3 className="text-3xl font-bold text-charcoal mb-6 text-balance">
+              Ready to Start Learning?
+            </h3>
+            <p className="text-lg text-charcoal/70 mb-8 max-w-3xl mx-auto leading-relaxed">
+              Your adaptive learning algorithm is ready to provide the perfect challenge level. Choose a subject and let's make today amazing!
             </p>
             <div className="flex flex-col sm:flex-row gap-6 justify-center">
               <Button
                 onClick={() => (window.location.href = "/dashboard/learn")}
-                className="bg-gradient-to-r from-coral to-warm-green text-cream px-10 py-4 rounded-3xl font-bold text-lg hover:shadow-lg transition-all duration-300 hover:scale-105 hover:-translate-y-1"
+                className="bg-coral hover:bg-coral/90 text-cream hover:-translate-y-1 transition-all"
               >
                 📚 Start Learning
               </Button>
               <Button
+                variant="outline"
                 onClick={() => (window.location.href = "/dashboard/progress")}
-                className="bg-gradient-to-r from-sage-blue to-warm-green text-cream px-10 py-4 rounded-3xl font-bold text-lg hover:shadow-lg transition-all duration-300 hover:scale-105 hover:-translate-y-1"
+                className="border-sage-blue/20 text-charcoal hover:bg-sage-blue/5 hover:-translate-y-1 transition-all"
               >
                 📊 View Progress
               </Button>
