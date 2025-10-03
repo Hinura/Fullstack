@@ -1,6 +1,6 @@
 "use client"
 
-import { useSearchParams } from "next/navigation"
+import { useSearchParams, useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Alert, AlertDescription } from "@/components/ui/alert"
@@ -21,12 +21,16 @@ interface UserData {
 
 export default function LearnPage() {
   const searchParams = useSearchParams()
+  const router = useRouter()
   const [showWelcome, setShowWelcome] = useState(false)
   const [userData, setUserData] = useState<UserData | null>(null)
-  const [loading, setLoading] = useState(true)
 
   // Hook must be called at the top level, before any conditional returns
   const { canAccess } = useBirthdateCheck({ user: userData, redirectTo: "/dashboard/learn" })
+
+  const startPractice = (subject: string, difficulty: string = 'adaptive') => {
+    router.push(`/dashboard/practice?subject=${subject}&difficulty=${difficulty}`)
+  }
 
   useEffect(() => {
     if (searchParams.get("welcome") === "true") {
@@ -49,8 +53,6 @@ export default function LearnPage() {
       }
     } catch (error) {
       console.error("Error fetching user data:", error)
-    } finally {
-      setLoading(false)
     }
   }
 
@@ -71,7 +73,7 @@ export default function LearnPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-cream via-sage-blue/5 to-coral/5">
-      <DashboardNavigation userData={userData} />
+      <DashboardNavigation userData={userData || undefined} />
 
       <main className="max-w-7xl mx-auto px-6 py-8">
         {showWelcome && (
@@ -135,17 +137,26 @@ export default function LearnPage() {
               <p className="text-charcoal/60 mb-4 leading-relaxed">Level 3 • Adaptive Practice</p>
 
               <div className="space-y-3 mb-4">
-                <button className="w-full text-left p-3 bg-coral/10 rounded-xl hover:bg-coral/20 transition-colors">
+                <button
+                  onClick={() => startPractice('math', 'adaptive')}
+                  className="w-full text-left p-3 bg-coral/10 rounded-xl hover:bg-coral/20 transition-colors"
+                >
                   <span className="font-medium text-charcoal">🎯 Quick Practice</span>
-                  <p className="text-sm text-charcoal/60">5-10 adaptive questions</p>
+                  <p className="text-sm text-charcoal/60">10 adaptive questions</p>
                 </button>
-                <button className="w-full text-left p-3 bg-sage-blue/10 rounded-xl hover:bg-sage-blue/20 transition-colors">
+                <button
+                  onClick={() => startPractice('math', 'medium')}
+                  className="w-full text-left p-3 bg-sage-blue/10 rounded-xl hover:bg-sage-blue/20 transition-colors"
+                >
                   <span className="font-medium text-charcoal">📊 Focus Session</span>
-                  <p className="text-sm text-charcoal/60">Target specific topics</p>
+                  <p className="text-sm text-charcoal/60">Medium difficulty practice</p>
                 </button>
-                <button className="w-full text-left p-3 bg-warm-green/10 rounded-xl hover:bg-warm-green/20 transition-colors">
+                <button
+                  onClick={() => startPractice('math', 'hard')}
+                  className="w-full text-left p-3 bg-warm-green/10 rounded-xl hover:bg-warm-green/20 transition-colors"
+                >
                   <span className="font-medium text-charcoal">🎲 Challenge Mode</span>
-                  <p className="text-sm text-charcoal/60">Higher difficulty questions</p>
+                  <p className="text-sm text-charcoal/60">Hard difficulty questions</p>
                 </button>
               </div>
             </div>
@@ -159,17 +170,26 @@ export default function LearnPage() {
               <p className="text-charcoal/60 mb-4 leading-relaxed">Level 2 • Comprehension Focus</p>
 
               <div className="space-y-3 mb-4">
-                <button className="w-full text-left p-3 bg-sage-blue/10 rounded-xl hover:bg-sage-blue/20 transition-colors">
-                  <span className="font-medium text-charcoal">📖 Reading Practice</span>
-                  <p className="text-sm text-charcoal/60">Short passages & questions</p>
+                <button
+                  onClick={() => startPractice('english', 'adaptive')}
+                  className="w-full text-left p-3 bg-sage-blue/10 rounded-xl hover:bg-sage-blue/20 transition-colors"
+                >
+                  <span className="font-medium text-charcoal">📖 Quick Practice</span>
+                  <p className="text-sm text-charcoal/60">10 adaptive questions</p>
                 </button>
-                <button className="w-full text-left p-3 bg-coral/10 rounded-xl hover:bg-coral/20 transition-colors">
-                  <span className="font-medium text-charcoal">📝 Vocabulary Builder</span>
-                  <p className="text-sm text-charcoal/60">Learn new words</p>
+                <button
+                  onClick={() => startPractice('english', 'medium')}
+                  className="w-full text-left p-3 bg-coral/10 rounded-xl hover:bg-coral/20 transition-colors"
+                >
+                  <span className="font-medium text-charcoal">📝 Focus Session</span>
+                  <p className="text-sm text-charcoal/60">Medium difficulty practice</p>
                 </button>
-                <button className="w-full text-left p-3 bg-warm-green/10 rounded-xl hover:bg-warm-green/20 transition-colors">
-                  <span className="font-medium text-charcoal">🧠 Comprehension Quiz</span>
-                  <p className="text-sm text-charcoal/60">Test understanding</p>
+                <button
+                  onClick={() => startPractice('english', 'hard')}
+                  className="w-full text-left p-3 bg-warm-green/10 rounded-xl hover:bg-warm-green/20 transition-colors"
+                >
+                  <span className="font-medium text-charcoal">🧠 Challenge Mode</span>
+                  <p className="text-sm text-charcoal/60">Hard difficulty questions</p>
                 </button>
               </div>
             </div>
@@ -183,17 +203,26 @@ export default function LearnPage() {
               <p className="text-charcoal/60 mb-4 leading-relaxed">Level 1 • Foundation Building</p>
 
               <div className="space-y-3 mb-4">
-                <button className="w-full text-left p-3 bg-warm-green/10 rounded-xl hover:bg-warm-green/20 transition-colors">
-                  <span className="font-medium text-charcoal">🔬 Basic Concepts</span>
-                  <p className="text-sm text-charcoal/60">Learn fundamentals</p>
+                <button
+                  onClick={() => startPractice('science', 'adaptive')}
+                  className="w-full text-left p-3 bg-warm-green/10 rounded-xl hover:bg-warm-green/20 transition-colors"
+                >
+                  <span className="font-medium text-charcoal">🔬 Quick Practice</span>
+                  <p className="text-sm text-charcoal/60">10 adaptive questions</p>
                 </button>
-                <button className="w-full text-left p-3 bg-sage-blue/10 rounded-xl hover:bg-sage-blue/20 transition-colors">
-                  <span className="font-medium text-charcoal">🧪 Experiments</span>
-                  <p className="text-sm text-charcoal/60">Interactive activities</p>
+                <button
+                  onClick={() => startPractice('science', 'medium')}
+                  className="w-full text-left p-3 bg-sage-blue/10 rounded-xl hover:bg-sage-blue/20 transition-colors"
+                >
+                  <span className="font-medium text-charcoal">🧪 Focus Session</span>
+                  <p className="text-sm text-charcoal/60">Medium difficulty practice</p>
                 </button>
-                <button className="w-full text-left p-3 bg-coral/10 rounded-xl hover:bg-coral/20 transition-colors">
-                  <span className="font-medium text-charcoal">🌍 Real World</span>
-                  <p className="text-sm text-charcoal/60">Apply knowledge</p>
+                <button
+                  onClick={() => startPractice('science', 'hard')}
+                  className="w-full text-left p-3 bg-coral/10 rounded-xl hover:bg-coral/20 transition-colors"
+                >
+                  <span className="font-medium text-charcoal">🌍 Challenge Mode</span>
+                  <p className="text-sm text-charcoal/60">Hard difficulty questions</p>
                 </button>
               </div>
             </div>
@@ -325,7 +354,7 @@ export default function LearnPage() {
             <div className="space-y-4">
               <div className="p-4 bg-gradient-to-r from-coral/10 to-warm-green/10 rounded-xl border-l-4 border-coral">
                 <h4 className="font-semibold text-charcoal mb-1">Mathematics Fractions</h4>
-                <p className="text-sm text-charcoal/60 mb-2">You're ready for the next level!</p>
+                <p className="text-sm text-charcoal/60 mb-2">You&apos;re ready for the next level!</p>
                 <Button size="sm" className="bg-coral hover:bg-coral/90 text-cream text-xs px-3 py-1">
                   Start Practice
                 </Button>

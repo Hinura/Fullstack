@@ -369,7 +369,7 @@ export default function DashboardPage() {
           <div className="bg-cream/95 rounded-3xl p-8 shadow-soft transition-all duration-300 hover:shadow-lg">
             <h3 className="text-2xl font-bold text-charcoal mb-8 flex items-center">
               <span className="mr-4">🎯</span>
-              Today's Goals
+              Today&apos;s Goals
             </h3>
             <div className="space-y-6">
               <div className="p-6 bg-gradient-to-r from-warm-green/10 to-sage-blue/10 rounded-3xl border border-warm-green/20 transition-all duration-300 hover:scale-[1.02]">
@@ -431,7 +431,7 @@ export default function DashboardPage() {
               Ready to Start Learning?
             </h3>
             <p className="text-lg text-charcoal/70 mb-8 max-w-3xl mx-auto leading-relaxed">
-              Your adaptive learning algorithm is ready to provide the perfect challenge level. Choose a subject and let's make today amazing!
+              Your adaptive learning algorithm is ready to provide the perfect challenge level. Choose a subject and let&apos;s make today amazing!
             </p>
             <div className="flex flex-col sm:flex-row gap-6 justify-center">
               <Button
