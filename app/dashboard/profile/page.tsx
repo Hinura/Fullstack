@@ -65,7 +65,7 @@ export default function ProfilePage() {
   const [showPictureModal, setShowPictureModal] = useState(false)
 
   // Hook must be called at the top level, before any conditional returns
-  const { canAccess } = useBirthdateCheck({ user: userData?.user, redirectTo: "/dashboard/profile" })
+  const { canAccess } = useBirthdateCheck({ user: userData?.user || null, redirectTo: "/dashboard/profile" })
 
   useEffect(() => {
     fetchUserData()
