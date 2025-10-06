@@ -6,6 +6,7 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import { getAgeAdaptation, getAgeAppropriateEmojis } from "@/lib/age-adaptations"
+import { ThemeToggle } from "@/components/theme-toggle"
 
 interface UserData {
   id: string
@@ -160,6 +161,9 @@ export default function DashboardNavigation({ userData }: DashboardNavigationPro
                 </div>
               )}
 
+              {/* Theme Toggle */}
+              <ThemeToggle />
+
               {/* User Profile Dropdown */}
               <div className="relative">
                 <button
@@ -204,23 +208,6 @@ export default function DashboardNavigation({ userData }: DashboardNavigationPro
                       </div>
                     </div>
                     <div className="p-3">
-                      <Link
-                        href="/dashboard/profile"
-                        className="flex items-center space-x-3 p-4 rounded-3xl hover:bg-coral/5 transition-all duration-300 group"
-                        onClick={() => setIsProfileDropdownOpen(false)}
-                      >
-                        <span className="text-xl group-hover:scale-110 transition-transform">👤</span>
-                        <span className="text-charcoal font-bold">View Profile</span>
-                      </Link>
-                      <Link
-                        href="/dashboard/progress"
-                        className="flex items-center space-x-3 p-4 rounded-3xl hover:bg-coral/5 transition-all duration-300 group"
-                        onClick={() => setIsProfileDropdownOpen(false)}
-                      >
-                        <span className="text-xl group-hover:scale-110 transition-transform">📊</span>
-                        <span className="text-charcoal font-bold">My Progress</span>
-                      </Link>
-                      <div className="border-t border-sage-blue/20 my-3"></div>
                       <button
                         onClick={handleLogout}
                         className="w-full flex items-center space-x-3 p-4 rounded-3xl hover:bg-red-50 transition-all duration-300 text-red-600 group"
@@ -295,6 +282,14 @@ export default function DashboardNavigation({ userData }: DashboardNavigationPro
             <span className="text-2xl group-hover:scale-110 transition-transform">👤</span>
             <span className="font-bold">Profile</span>
           </Link>
+          <div className="border-t border-sage-blue/20 my-3"></div>
+          <button
+            onClick={handleLogout}
+            className="w-full flex items-center space-x-4 p-4 rounded-3xl hover:bg-red-50 transition-all duration-300 text-red-600 group"
+          >
+            <span className="text-2xl group-hover:scale-110 transition-transform">🚪</span>
+            <span className="font-bold">Sign Out</span>
+          </button>
         </nav>
       </div>
     </>

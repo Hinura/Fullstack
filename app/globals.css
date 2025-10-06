@@ -38,7 +38,7 @@
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
 
-  /* Bloom Humanist Color Palette */
+  /* Bloom Humanist Color Palette - Light Mode */
   --coral: #ff6b6b;
   --sage-blue: #4ecdc4;
   --warm-green: #45b7d1;
@@ -114,6 +114,18 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(0.269 0 0);
   --sidebar-ring: oklch(0.439 0 0);
+
+  /* Bloom Humanist Color Palette - Dark Mode */
+  --coral: #ff8787;
+  --sage-blue: #6ee7de;
+  --warm-green: #67d4ed;
+  --cream: #1a1f2e;
+  --charcoal: #f5f1e3;
+
+  /* Dark mode specific backgrounds and surfaces */
+  --dark-bg: #0f1419;
+  --dark-surface: #1a1f2e;
+  --dark-surface-elevated: #242b3d;
 
   --background: var(--charcoal);
   --foreground: var(--cream);
@@ -255,6 +267,11 @@
 
 .shadow-organic-lg {
   box-shadow: 0 35px 60px -12px rgba(255, 107, 107, 0.25), 0 35px 35px -12px rgba(255, 107, 107, 0.15);
+}
+
+/* Adding shadow-soft utility class for organic shadows */
+.shadow-soft {
+  box-shadow: 0 10px 25px -5px rgba(255, 107, 107, 0.1), 0 8px 10px -6px rgba(78, 205, 196, 0.1);
 }
 
 /* Rounded typography class */
