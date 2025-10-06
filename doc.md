@@ -321,3 +321,223 @@ correct_answer       -- Answer index
 - Balance between academic research and practical implementation constraints
 
 **Last Updated:** September 25, 2024 - Database Simplification Complete
+
+---
+
+# 🚀 PHASE 2: ADAPTIVE AI & DYNAMIC DIFFICULTY (Planning - October 2025)
+
+## Next Steps - Dynamic Difficulty Crossing + Adaptive AI
+
+### **Phase 2A: Dynamic Difficulty Mapping**
+
+**Goal:** Create a system where Age 10 "hard" ≈ Age 11 "medium" ≈ Age 12 "easy"
+
+**Implementation Options:**
+
+#### Option 1: Difficulty Score System
+- Assign numeric scores to age+difficulty combinations
+- Example: Age 10 hard = 13 points, Age 11 medium = 13 points, Age 12 easy = 13 points
+- Questions selected based on target difficulty score
+- **Pros:** Flexible, granular control, easy to tune
+- **Cons:** Requires calibration and testing
+
+#### Option 2: Simple Lookup Table
+- Hard-coded mapping of equivalent difficulties
+- Example mapping table in database or code
+- **Pros:** Simple, predictable, easy to understand
+- **Cons:** Less flexible, requires manual updates
+
+**Decision Needed:** Which approach to use?
+
+---
+
+### **Phase 2B: Adaptive Algorithm**
+
+**Goal:** Track performance and dynamically adjust difficulty
+
+#### Key Questions:
+
+**1. What triggers difficulty increase?**
+- Option A: 80%+ accuracy on last 3 quizzes in current difficulty
+- Option B: 5 correct answers in a row
+- Option C: Time-based performance (fast + accurate)
+- Option D: Weighted combination of accuracy + speed
+- **Decision Needed:** What metric(s) should we use?
+
+**2. What data should we track?**
+- Recent performance (last 5-10 attempts per subject)
+- Success rate per difficulty level
+- Time spent per question
+- Questions seen (to avoid repeats)
+- Learning velocity (improvement rate)
+- **Decision Needed:** Which metrics are most important?
+
+**3. How should we adjust difficulty?**
+- Option A: Move to next difficulty within same age group
+- Option B: Move to next age group's lower difficulty (dynamic crossing)
+- Option C: Mix both - stay in age until hard is mastered, then advance age
+- **Decision Needed:** What adjustment strategy?
+
+#### Proposed Database Changes:
+```sql
+-- Track performance metrics per subject
+CREATE TABLE user_performance_metrics (
+  user_id UUID,
+  subject TEXT,
+  current_difficulty_score INTEGER,
+  recent_accuracy DECIMAL,
+  questions_attempted INTEGER,
+  avg_time_per_question INTEGER,
+  last_5_attempts JSONB, -- Store recent attempt IDs/scores
+  updated_at TIMESTAMPTZ
+);
+
+-- Track which questions user has seen
+CREATE TABLE user_question_history (
+  user_id UUID,
+  question_id UUID,
+  times_seen INTEGER,
+  times_correct INTEGER,
+  last_seen_at TIMESTAMPTZ
+);
+```
+
+---
+
+### **Phase 2C: AI Integration**
+
+**Goal:** Use AI to provide personalized learning recommendations and insights
+
+#### Key Questions:
+
+**1. Which AI API should we use?**
+- Option A: **OpenAI (GPT-4/GPT-4o)**
+  - Pros: Powerful, well-documented, wide adoption
+  - Cons: More expensive, rate limits
+- Option B: **Anthropic (Claude 3.5 Sonnet)**
+  - Pros: Better reasoning, longer context, competitive pricing
+  - Cons: Newer API, smaller ecosystem
+- Option C: **Both with fallback**
+  - Pros: Redundancy, can compare results
+  - Cons: More complex, higher costs
+- **Decision Needed:** Which API provider(s)?
+
+**2. What should AI do?**
+
+**Option A: Subject Recommendations**
+- Analyze weak areas across subjects
+- Suggest which subject to practice next
+- Provide reasoning for recommendation
+```typescript
+// Example API call
+const recommendation = await ai.analyze({
+  mathPerformance: 75,
+  englishPerformance: 60,
+  sciencePerformance: 85,
+  recentActivity: [...],
+  learningGoals: [...]
+})
+// Returns: "Focus on English - you're improving but need consistency"
+```
+
+**Option B: Personalized Hints**
+- Generate context-aware hints during questions
+- Adapt hint difficulty to student's level
+- Progressive hints (start gentle, get more specific)
+```typescript
+// Example
+const hint = await ai.generateHint({
+  question: "What is 15% of 200?",
+  studentAge: 12,
+  previousAttempts: 1,
+  subjectLevel: 3
+})
+// Returns: "Think about what 10% would be first, then add half of that."
+```
+
+**Option C: Custom Difficulty Suggestions**
+- AI analyzes performance patterns
+- Suggests optimal difficulty adjustments
+- Explains reasoning for transparency
+```typescript
+const suggestion = await ai.suggestDifficulty({
+  recentScores: [85, 90, 88, 92],
+  currentDifficulty: "medium",
+  subject: "math",
+  ageGroup: 12
+})
+// Returns: "Ready for hard questions - consistent high performance"
+```
+
+**Option D: Learning Pattern Analysis**
+- Identifies learning style (visual, practice-based, etc.)
+- Detects struggling patterns (e.g., always wrong on word problems)
+- Provides insights to student/teacher/parent
+```typescript
+const insights = await ai.analyzePatterns({
+  last30Days: performanceData,
+  questionTypes: [...],
+  timeSpentData: [...]
+})
+// Returns: "Strong with visual problems, struggles with multi-step reasoning"
+```
+
+**Decision Needed:** Which AI features to implement? (Can be multiple)
+
+#### Proposed Implementation Structure:
+```typescript
+// lib/ai/provider.ts
+interface AIProvider {
+  recommendSubject(userData: UserPerformance): Promise<Recommendation>
+  generateHint(question: Question, context: HintContext): Promise<string>
+  suggestDifficulty(metrics: PerformanceMetrics): Promise<DifficultyAdjustment>
+  analyzePatterns(history: LearningHistory): Promise<Insights>
+}
+
+// API endpoint
+// app/api/ai/recommend/route.ts
+export async function POST(request: Request) {
+  const { userId, requestType } = await request.json()
+  // Call AI provider
+  // Return recommendation
+}
+```
+
+---
+
+## 🎯 Implementation Priority
+
+**Phase 2A** (Dynamic Difficulty Mapping)
+- Essential for maximizing question pool
+- Relatively simple to implement
+- High impact on user experience
+
+**Phase 2B** (Adaptive Algorithm)
+- Core thesis contribution
+- Requires careful design and testing
+- Medium complexity
+
+**Phase 2C** (AI Integration)
+- Nice-to-have, impressive for demo
+- Can be added incrementally
+- Requires API costs consideration
+
+---
+
+## 📝 Decisions Required
+
+**Before we proceed, please decide:**
+
+1. **Phase 2A:** Difficulty score system OR lookup table?
+2. **Phase 2B:**
+   - What triggers difficulty increase?
+   - Which metrics to track?
+   - How to adjust difficulty?
+3. **Phase 2C:**
+   - Which AI provider(s)?
+   - Which AI features to implement?
+   - Budget for API calls?
+
+**Let's discuss each decision together before implementing!** 🤝
+
+**Last Updated:** October 3, 2025 - Planning Phase 2

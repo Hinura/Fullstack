@@ -44,13 +44,16 @@ function SignInContent() {
 
       if (error) {
         setError(error.message)
+        setIsLoading(false)
       } else if (data?.user) {
+        // Wait a bit to ensure session is set in cookies before redirect
+        await new Promise(resolve => setTimeout(resolve, 500))
         // Use window.location for a full page reload to ensure session is properly set
         window.location.href = '/dashboard/learn'
+        // Keep loading state true during redirect
       }
     } catch {
       setError('An unexpected error occurred')
-    } finally {
       setIsLoading(false)
     }
   }
