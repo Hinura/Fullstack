@@ -45,8 +45,8 @@ function SignInContent() {
       if (error) {
         setError(error.message)
       } else if (data?.user) {
-        router.push('/dashboard/learn')
-        router.refresh()
+        // Use window.location for a full page reload to ensure session is properly set
+        window.location.href = '/dashboard/learn'
       }
     } catch {
       setError('An unexpected error occurred')
