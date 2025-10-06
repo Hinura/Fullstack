@@ -17,30 +17,42 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid subject' }, { status: 400 })
     }
 
+    // Get user's age for age-appropriate questions
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('age')
+      .eq('id', user.id)
+      .single()
+
+    const userAge = profile?.age || 10
+
+    // Map subject names (assessment uses 'mathematics', practice uses 'math')
+    const practiceSubject = subject === 'mathematics' ? 'math' : subject === 'reading' ? 'english' : subject
+
     // Get questions for the subject (2 easy, 3 medium, 2 hard)
     const { data: easyQuestions, error: easyError } = await supabase
-      .from('assessment_questions')
+      .from('questions')
       .select('*')
-      .eq('subject', subject)
+      .eq('subject', practiceSubject)
+      .eq('age_group', userAge)
       .eq('difficulty', 'easy')
       .limit(2)
-      .order('id')
 
     const { data: mediumQuestions, error: mediumError } = await supabase
-      .from('assessment_questions')
+      .from('questions')
       .select('*')
-      .eq('subject', subject)
+      .eq('subject', practiceSubject)
+      .eq('age_group', userAge)
       .eq('difficulty', 'medium')
       .limit(3)
-      .order('id')
 
     const { data: hardQuestions, error: hardError } = await supabase
-      .from('assessment_questions')
+      .from('questions')
       .select('*')
-      .eq('subject', subject)
+      .eq('subject', practiceSubject)
+      .eq('age_group', userAge)
       .eq('difficulty', 'hard')
       .limit(2)
-      .order('id')
 
     if (easyError || mediumError || hardError) {
       console.error('Database error:', { easyError, mediumError, hardError })

@@ -52,6 +52,26 @@ export async function POST(request: Request) {
       // Don't fail the request if points update fails
     }
 
+    // Update user's streak
+    const { error: streakError } = await supabase.rpc('update_user_streak', {
+      user_id: user.id
+    })
+
+    if (streakError) {
+      console.error('Error updating streak:', streakError)
+      // Don't fail the request if streak update fails
+    }
+
+    // Update user's level based on points (exponential progression)
+    const { error: levelError } = await supabase.rpc('update_user_level', {
+      user_id: user.id
+    })
+
+    if (levelError) {
+      console.error('Error updating level:', levelError)
+      // Don't fail the request if level update fails
+    }
+
     return NextResponse.json({ success: true, data })
   } catch (error) {
     console.error('Error in quiz-attempts POST:', error)

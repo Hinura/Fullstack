@@ -4,6 +4,20 @@ import { useEffect, useState } from "react"
 import { Loader2, TrendingUp, Award, Target, Calendar, BarChart3 } from "lucide-react"
 import DashboardNavigation from "@/components/DashboardNavigation"
 import { useBirthdateCheck } from "@/hooks/useBirthdateCheck"
+import { CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts"
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
+import {
+  ChartConfig,
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+} from "@/components/ui/chart"
 
 interface UserData {
   id: string
@@ -92,6 +106,47 @@ export default function ProgressPage() {
     return attempts.slice(0, 10)
   }
 
+  const getChartData = () => {
+    // Sort attempts by date (oldest first)
+    const sortedAttempts = [...attempts].sort((a, b) =>
+      new Date(a.completed_at).getTime() - new Date(b.completed_at).getTime()
+    )
+
+    // Group attempts by date and subject
+    const dataByDate = sortedAttempts.reduce((acc, attempt) => {
+      const date = new Date(attempt.completed_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+      if (!acc[date]) {
+        acc[date] = { date, math: [], english: [], science: [] }
+      }
+      acc[date][attempt.subject as 'math' | 'english' | 'science'].push(attempt.score_percentage)
+      return acc
+    }, {} as Record<string, { date: string; math: number[]; english: number[]; science: number[] }>)
+
+    // Calculate averages per subject and format for chart (all data from beginning)
+    return Object.values(dataByDate)
+      .map(({ date, math, english, science }) => ({
+        date,
+        math: math.length > 0 ? Math.round(math.reduce((sum, s) => sum + s, 0) / math.length) : null,
+        english: english.length > 0 ? Math.round(english.reduce((sum, s) => sum + s, 0) / english.length) : null,
+        science: science.length > 0 ? Math.round(science.reduce((sum, s) => sum + s, 0) / science.length) : null,
+      }))
+  }
+
+  const chartConfig = {
+    math: {
+      label: "Math",
+      color: "#ff6b6b", // coral
+    },
+    english: {
+      label: "English",
+      color: "#4ecdc4", // sage-blue
+    },
+    science: {
+      label: "Science",
+      color: "#45b7d1", // warm-green
+    },
+  } satisfies ChartConfig
+
   const getTotalStats = () => {
     return {
       totalQuizzes: attempts.length,
@@ -158,6 +213,7 @@ export default function ProgressPage() {
   const stats = getTotalStats()
   const subjectStats = getSubjectStats()
   const recentActivity = getRecentActivity()
+  const chartData = getChartData()
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-cream via-sage-blue/5 to-coral/5">
@@ -171,7 +227,7 @@ export default function ProgressPage() {
         </div>
 
         {/* Overall Stats Cards */}
-        <div className="grid md:grid-cols-4 gap-6 mb-8">
+        <div className="grid md:grid-cols-5 gap-6 mb-8">
           <div className="bg-cream/95 rounded-3xl p-6 shadow-soft border-2 border-coral/20">
             <div className="flex items-center mb-3">
               <div className="w-12 h-12 bg-coral/20 rounded-2xl flex items-center justify-center mr-3">
@@ -219,6 +275,18 @@ export default function ProgressPage() {
               </div>
             </div>
           </div>
+
+          <div className="bg-cream/95 rounded-3xl p-6 shadow-soft border-2 border-warm-green/20">
+            <div className="flex items-center mb-3">
+              <div className="w-12 h-12 bg-warm-green/20 rounded-2xl flex items-center justify-center mr-3">
+                <span className="text-2xl">🔥</span>
+              </div>
+              <div>
+                <p className="text-sm text-charcoal/60">Day Streak</p>
+                <p className="text-3xl font-bold text-charcoal">{userData?.streakDays || 0}</p>
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Subject Performance */}
@@ -260,6 +328,104 @@ export default function ProgressPage() {
             })}
           </div>
         </div>
+
+        {/* Growth Chart */}
+        {chartData.length > 0 && (
+          <div className="mb-8">
+            <Card className="bg-cream/95 dark:bg-dark-surface border-2 border-sage-blue/20 shadow-soft rounded-3xl">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="text-3xl font-bold text-charcoal dark:text-charcoal flex items-center">
+                      <TrendingUp className="h-8 w-8 text-coral mr-3" />
+                      Performance Growth
+                    </CardTitle>
+                    <CardDescription className="text-charcoal/70 dark:text-charcoal/70 text-base mt-2">
+                      Track your scores per subject over time
+                    </CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <ChartContainer config={chartConfig}>
+                  <LineChart
+                    accessibilityLayer
+                    data={chartData}
+                    margin={{
+                      left: 12,
+                      right: 12,
+                      top: 12,
+                      bottom: 12,
+                    }}
+                  >
+                    <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="hsl(var(--sage-blue) / 0.2)" />
+                    <XAxis
+                      dataKey="date"
+                      tickLine={false}
+                      axisLine={false}
+                      tickMargin={8}
+                      tick={{ fill: 'hsl(var(--charcoal))', fontSize: 12 }}
+                      className="dark:[&_text]:fill-white"
+                    />
+                    <YAxis
+                      tickLine={false}
+                      axisLine={false}
+                      tickMargin={8}
+                      tick={{ fill: 'hsl(var(--charcoal))', fontSize: 12 }}
+                      className="dark:[&_text]:fill-white"
+                    />
+                    <ChartTooltip cursor={false} content={<ChartTooltipContent />} />
+                    <Line
+                      dataKey="math"
+                      type="monotone"
+                      stroke="var(--color-math)"
+                      strokeWidth={3}
+                      dot={{
+                        fill: "var(--color-math)",
+                        className: "dark:fill-white",
+                        r: 4,
+                      }}
+                      activeDot={{
+                        r: 6,
+                      }}
+                      connectNulls
+                    />
+                    <Line
+                      dataKey="english"
+                      type="monotone"
+                      stroke="var(--color-english)"
+                      strokeWidth={3}
+                      dot={{
+                        fill: "var(--color-english)",
+                        className: "dark:fill-white",
+                        r: 4,
+                      }}
+                      activeDot={{
+                        r: 6,
+                      }}
+                      connectNulls
+                    />
+                    <Line
+                      dataKey="science"
+                      type="monotone"
+                      stroke="var(--color-science)"
+                      strokeWidth={3}
+                      dot={{
+                        fill: "var(--color-science)",
+                        className: "dark:fill-white",
+                        r: 4,
+                      }}
+                      activeDot={{
+                        r: 6,
+                      }}
+                      connectNulls
+                    />
+                  </LineChart>
+                </ChartContainer>
+              </CardContent>
+            </Card>
+          </div>
+        )}
 
         {/* Recent Activity */}
         <div className="bg-cream/95 rounded-3xl p-8 shadow-soft">
