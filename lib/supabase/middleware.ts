@@ -57,13 +57,8 @@ export async function updateSession(request: NextRequest) {
 
   const { data: { user } } = await supabase.auth.getUser()
 
-  // Skip redirect if we have auth-related cookies being set (in the middle of login)
-  const hasAuthCookie = request.cookies.has('sb-access-token') ||
-                        request.cookies.has('sb-refresh-token') ||
-                        request.cookies.toString().includes('sb-awctrtvldzlfuntzlahs-auth-token')
-
   // Protect /dashboard routes - redirect to login if not authenticated
-  if (request.nextUrl.pathname.startsWith('/dashboard') && !user && !hasAuthCookie) {
+  if (request.nextUrl.pathname.startsWith('/dashboard') && !user) {
     const redirectUrl = new URL('/auth/login', request.url)
     return NextResponse.redirect(redirectUrl)
   }

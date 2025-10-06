@@ -46,10 +46,12 @@ function SignInContent() {
         setError(error.message)
         setIsLoading(false)
       } else if (data?.user) {
-        // Wait a bit to ensure session is set in cookies before redirect
-        await new Promise(resolve => setTimeout(resolve, 500))
-        // Use window.location for a full page reload to ensure session is properly set
-        window.location.href = '/dashboard/learn'
+        // Ensure session is fully refreshed before redirect
+        await supabase.auth.getSession()
+        // Wait for cookies to be set properly in production
+        await new Promise(resolve => setTimeout(resolve, 1000))
+        // Use replace to prevent back button issues
+        window.location.replace('/dashboard/learn')
         // Keep loading state true during redirect
       }
     } catch {
