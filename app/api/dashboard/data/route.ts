@@ -11,15 +11,39 @@ export async function GET() {
     }
 
     // Get user profile (created automatically by database trigger)
-    const { data: profile, error: profileError } = await supabase
+    let profile
+    const { data: profileData, error: profileError } = await supabase
       .from('profiles')
       .select('*')
       .eq('id', user.id)
       .single()
 
+    profile = profileData
+
     if (profileError) {
       console.error('Profile fetch error:', profileError)
-      return NextResponse.json({ error: 'Profile not found' }, { status: 404 })
+      // If profile doesn't exist, create it
+      const { data: newProfile, error: createError } = await supabase
+        .from('profiles')
+        .insert({
+          id: user.id,
+          full_name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'User',
+          username: user.email?.split('@')[0],
+          birthdate: user.user_metadata?.birthdate,
+          age: user.user_metadata?.age,
+          points: 0,
+          current_level: 1,
+          streak_days: 0
+        })
+        .select()
+        .single()
+
+      if (createError) {
+        console.error('Profile creation error:', createError)
+        return NextResponse.json({ error: 'Failed to create profile' }, { status: 500 })
+      }
+
+      profile = newProfile
     }
 
     // Get user skill levels

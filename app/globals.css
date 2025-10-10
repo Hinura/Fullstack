@@ -115,45 +115,17 @@
   --sidebar-border: oklch(0.269 0 0);
   --sidebar-ring: oklch(0.439 0 0);
 
-  /* Bloom Humanist Color Palette - Dark Mode */
+  /* Bloom Humanist Color Palette - Dark Mode (for reference) */
   --coral: #ff8787;
   --sage-blue: #6ee7de;
   --warm-green: #67d4ed;
   --cream: #1a1f2e;
   --charcoal: #f5f1e3;
 
-  /* Dark mode specific backgrounds and surfaces */
+  /* Dark mode specific backgrounds and surfaces (for reference) */
   --dark-bg: #0f1419;
   --dark-surface: #1a1f2e;
   --dark-surface-elevated: #242b3d;
-
-  --background: var(--charcoal);
-  --foreground: var(--cream);
-  --card: var(--charcoal);
-  --card-foreground: var(--cream);
-  --popover: var(--charcoal);
-  --popover-foreground: var(--cream);
-  --primary: var(--coral);
-  --primary-foreground: var(--cream);
-  --secondary: color-mix(in srgb, var(--sage-blue) 20%, var(--charcoal));
-  --secondary-foreground: var(--cream);
-  --muted: color-mix(in srgb, var(--sage-blue) 10%, var(--charcoal));
-  --muted-foreground: color-mix(in srgb, var(--cream) 70%, transparent);
-  --accent: var(--warm-green);
-  --accent-foreground: var(--charcoal);
-  --destructive: #ef4444;
-  --destructive-foreground: var(--cream);
-  --border: color-mix(in srgb, var(--sage-blue) 20%, var(--charcoal));
-  --input: color-mix(in srgb, var(--sage-blue) 20%, var(--charcoal));
-  --ring: var(--coral);
-  --sidebar: var(--charcoal);
-  --sidebar-foreground: var(--cream);
-  --sidebar-primary: var(--coral);
-  --sidebar-primary-foreground: var(--cream);
-  --sidebar-accent: color-mix(in srgb, var(--sage-blue) 20%, var(--charcoal));
-  --sidebar-accent-foreground: var(--cream);
-  --sidebar-border: color-mix(in srgb, var(--sage-blue) 20%, var(--charcoal));
-  --sidebar-ring: var(--coral);
 }
 
 @theme inline {
