@@ -1,8 +1,9 @@
 // app/api/auth/callback/route.ts
-import { createClient } from '@/lib/supabase/server'
-import { NextResponse } from 'next/server'
+import { createServerClient, type CookieOptions } from '@supabase/ssr'
+import { NextResponse, type NextRequest } from 'next/server'
+import { cookies } from 'next/headers'
 
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url)
   const code = requestUrl.searchParams.get('code')
   const error = requestUrl.searchParams.get('error')
@@ -10,7 +11,7 @@ export async function GET(request: Request) {
 
   // Handle auth errors from Supabase
   if (error) {
-    console.error('Auth callback error from Supabase:', error, error_description)
+    console.error('Auth callback error:', error, error_description)
     const errorMessage = error === 'access_denied'
       ? 'Access was denied. Please try again.'
       : 'Authentication failed. Please try again.'
@@ -19,7 +20,37 @@ export async function GET(request: Request) {
 
   if (code) {
     try {
-      const supabase = await createClient()
+      const cookieStore = await cookies()
+
+      // Create Supabase client with proper cookie handling for PKCE
+      const supabase = createServerClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        {
+          cookies: {
+            get(name: string) {
+              return cookieStore.get(name)?.value
+            },
+            set(name: string, value: string, options: CookieOptions) {
+              try {
+                cookieStore.set({ name, value, ...options })
+              } catch {
+                // The `set` method was called from a Server Component.
+                // This can be ignored if you have middleware refreshing user sessions.
+              }
+            },
+            remove(name: string, options: CookieOptions) {
+              try {
+                cookieStore.set({ name, value: '', ...options })
+              } catch {
+                // The `delete` method was called from a Server Component.
+                // This can be ignored if you have middleware refreshing user sessions.
+              }
+            },
+          },
+        }
+      )
+
       const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code)
 
       if (exchangeError) {
@@ -56,8 +87,8 @@ export async function GET(request: Request) {
       let redirectUrl = '/dashboard'
 
       if (isNewUser && !hasCompletedAssessment) {
-        // New user needs to take assessment first
-        redirectUrl = '/dashboard/assessment'
+        // New user - show confirmation success page first
+        redirectUrl = '/auth/confirmed'
       } else if (isNewUser && hasCompletedAssessment) {
         // New user who already completed assessment (edge case)
         redirectUrl = '/dashboard?welcome=true&new_user=true'
