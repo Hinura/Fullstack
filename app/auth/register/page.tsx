@@ -53,8 +53,13 @@ export default function RegisterPage() {
     }
 
     const age = calculateAge(birthdate)
-    if (age < 13) {
-      setError('You must be at least 13 years old to create an account')
+    if (age < 7) {
+      setError('You must be at least 7 years old to create an account')
+      return
+    }
+
+    if (age > 18) {
+      setError('You must be 18 years old or younger to create an account')
       return
     }
 
@@ -76,6 +81,7 @@ export default function RegisterPage() {
         email,
         password,
         options: {
+          emailRedirectTo: `${window.location.origin}/api/auth/callback`,
           data: {
             full_name: fullName,
             birthdate: birthdate,

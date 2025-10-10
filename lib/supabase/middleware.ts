@@ -55,7 +55,21 @@ export async function updateSession(request: NextRequest) {
     }
   )
 
-  const { data: { user } } = await supabase.auth.getUser()
+  let user = null
+
+  try {
+    const { data: { user: authUser }, error } = await supabase.auth.getUser()
+
+    if (error) {
+      // If refresh token is invalid, clear the session
+      await supabase.auth.signOut()
+    } else {
+      user = authUser
+    }
+  } catch (error) {
+    // Handle any auth errors by treating user as logged out
+    console.error('Auth error in middleware:', error)
+  }
 
   // Protect /dashboard routes - redirect to login if not authenticated
   if (request.nextUrl.pathname.startsWith('/dashboard') && !user) {
