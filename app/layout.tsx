@@ -16,9 +16,12 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Hinura",
   description: "AI Driven Gamified Learning Platform",
-  icons: {
-    icon: "/logo.svg",
-  },
+  icons: [
+    {
+      rel: "icon",
+      url: "/logo.svg",
+    },
+  ],
 };
 
 export default function RootLayout({

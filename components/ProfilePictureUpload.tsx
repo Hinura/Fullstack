@@ -107,11 +107,11 @@ export default function ProfilePictureUpload({
           try {
             const errorData = JSON.parse(responseText)
             errorMessage = errorData.error || errorMessage
-          } catch (jsonError) {
+          } catch {
             // Response is not JSON, use the raw text
             errorMessage = responseText || `HTTP ${response.status}: ${response.statusText}`
           }
-        } catch (readError) {
+        } catch {
           errorMessage = `HTTP ${response.status}: ${response.statusText}`
         }
         throw new Error(errorMessage)
@@ -162,11 +162,11 @@ export default function ProfilePictureUpload({
           try {
             const errorData = JSON.parse(responseText)
             errorMessage = errorData.error || errorMessage
-          } catch (jsonError) {
+          } catch {
             // Response is not JSON, use the raw text
             errorMessage = responseText || `HTTP ${response.status}: ${response.statusText}`
           }
-        } catch (readError) {
+        } catch {
           errorMessage = `HTTP ${response.status}: ${response.statusText}`
         }
         throw new Error(errorMessage)

@@ -1,7 +1,7 @@
 "use client"
 
 import { useSearchParams, useRouter } from "next/navigation"
-import { useEffect, useState, Suspense } from "react"
+import { useEffect, useState, useCallback, Suspense } from "react"
 import { Button } from "@/components/ui/button"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Loader2, CheckCircle2, XCircle, ArrowLeft } from "lucide-react"
@@ -20,11 +20,18 @@ interface Question {
   answer: string
 }
 
+interface QuestionAttempt {
+  question_id: string
+  answered_correctly: boolean
+  time_spent_seconds: number
+}
+
 interface QuizState {
   currentQuestion: number
   selectedAnswers: (string | null)[]
   score: number
   isComplete: boolean
+  questionAttempts: QuestionAttempt[]
 }
 
 function PracticeContent() {
@@ -39,25 +46,56 @@ function PracticeContent() {
     currentQuestion: 0,
     selectedAnswers: [],
     score: 0,
-    isComplete: false
+    isComplete: false,
+    questionAttempts: []
   })
   const [showFeedback, setShowFeedback] = useState(false)
   const [startTime, setStartTime] = useState<number>(Date.now())
+  const [questionStartTime, setQuestionStartTime] = useState<number>(Date.now())
 
-  useEffect(() => {
-    if (!subject) {
-      router.push('/dashboard/learn')
-      return
-    }
-    fetchQuestions()
-    setStartTime(Date.now())
-  }, [subject, difficulty])
-
-  const fetchQuestions = async () => {
+  const fetchQuestions = useCallback(async () => {
     try {
       const response = await fetch(`/api/questions?subject=${subject}&difficulty=${difficulty}&limit=10`)
       if (response.ok) {
         const data = await response.json()
+
+        // Developer Debug Info - Check browser console
+        console.group('🎯 Adaptive Learning System (EDL)')
+        console.log('%c━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', 'color: #10b981')
+
+        // Effective Learning Age - Main metric
+        console.log(
+          '%c📊 EFFECTIVE LEARNING AGE: %c' + data.effective_age + ' years old',
+          'color: #3b82f6; font-weight: bold; font-size: 14px',
+          'color: #10b981; font-weight: bold; font-size: 16px; background: #dcfce7; padding: 2px 8px; border-radius: 4px'
+        )
+
+        console.log('%c━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', 'color: #10b981')
+
+        // Breakdown
+        console.log('👤 Chronological Age:', data.chronological_age, 'years')
+        console.log(
+          '⚡ Performance Adjustment:',
+          (data.performance_adjustment >= 0 ? '+' : '') + data.performance_adjustment + ' years',
+          data.performance_adjustment > 0 ? '(performing above age level)' :
+          data.performance_adjustment < 0 ? '(needs support)' :
+          '(at age level)'
+        )
+        console.log('📈 Recent Accuracy:', data.recent_accuracy !== null && data.recent_accuracy !== undefined ? `${data.recent_accuracy.toFixed(1)}%` : 'N/A (needs 3+ quizzes)')
+        console.log('🚫 Questions Excluded (recently attempted):', data.excluded_count)
+        console.log('✅ Questions Loaded:', data.questions.length)
+
+        console.log('%c━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', 'color: #10b981')
+
+        console.table(data.questions.map((q: Question) => ({
+          ID: q.id.substring(0, 8),
+          Subject: q.subject,
+          'Age Group': q.age_group,
+          Difficulty: q.difficulty,
+          Question: q.question.substring(0, 50) + '...'
+        })))
+        console.groupEnd()
+
         setQuestions(data.questions)
         setQuizState(prev => ({
           ...prev,
@@ -69,7 +107,18 @@ function PracticeContent() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [subject, difficulty])
+
+  useEffect(() => {
+    if (!subject) {
+      router.push('/dashboard/learn')
+      return
+    }
+    fetchQuestions()
+    const now = Date.now()
+    setStartTime(now)
+    setQuestionStartTime(now)
+  }, [subject, difficulty, fetchQuestions, router])
 
   const handleAnswerSelect = (answer: string) => {
     const newAnswers = [...quizState.selectedAnswers]
@@ -77,7 +126,7 @@ function PracticeContent() {
     setQuizState(prev => ({ ...prev, selectedAnswers: newAnswers }))
   }
 
-  const saveQuizAttempt = async (correctAnswers: number, timeSpentSeconds: number) => {
+  const saveQuizAttempt = async (correctAnswers: number, timeSpentSeconds: number, questionAttempts: QuestionAttempt[]) => {
     try {
       await fetch('/api/quiz-attempts', {
         method: 'POST',
@@ -87,7 +136,8 @@ function PracticeContent() {
           difficulty,
           total_questions: questions.length,
           correct_answers: correctAnswers,
-          time_spent_seconds: timeSpentSeconds
+          time_spent_seconds: timeSpentSeconds,
+          question_attempts: questionAttempts
         })
       })
     } catch (error) {
@@ -98,26 +148,48 @@ function PracticeContent() {
   const handleNext = () => {
     setShowFeedback(true)
 
+    // Record the current question attempt
+    const currentQuestion = questions[quizState.currentQuestion]
+    const selectedAnswer = quizState.selectedAnswers[quizState.currentQuestion]
+    const isCorrect = selectedAnswer === currentQuestion.answer
+    const timeSpentOnQuestion = Math.floor((Date.now() - questionStartTime) / 1000)
+
+    const attempt: QuestionAttempt = {
+      question_id: currentQuestion.id,
+      answered_correctly: isCorrect,
+      time_spent_seconds: timeSpentOnQuestion
+    }
+
     setTimeout(() => {
       if (quizState.currentQuestion < questions.length - 1) {
         setQuizState(prev => ({
           ...prev,
-          currentQuestion: prev.currentQuestion + 1
+          currentQuestion: prev.currentQuestion + 1,
+          questionAttempts: [...prev.questionAttempts, attempt]
         }))
         setShowFeedback(false)
+        setQuestionStartTime(Date.now()) // Reset timer for next question
       } else {
         // Calculate final score
         const score = quizState.selectedAnswers.reduce((acc, answer, idx) => {
           return acc + (answer === questions[idx].answer ? 1 : 0)
         }, 0)
 
-        // Calculate time spent
+        // Add the last question attempt
+        const finalAttempts = [...quizState.questionAttempts, attempt]
+
+        // Calculate total time spent
         const timeSpentSeconds = Math.floor((Date.now() - startTime) / 1000)
 
-        // Save quiz attempt to database
-        saveQuizAttempt(score, timeSpentSeconds)
+        // Save quiz attempt to database with question attempts
+        saveQuizAttempt(score, timeSpentSeconds, finalAttempts)
 
-        setQuizState(prev => ({ ...prev, score, isComplete: true }))
+        setQuizState(prev => ({
+          ...prev,
+          score,
+          isComplete: true,
+          questionAttempts: finalAttempts
+        }))
       }
     }, 1500)
   }

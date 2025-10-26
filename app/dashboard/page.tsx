@@ -9,7 +9,7 @@ import DashboardNavigation from "@/components/DashboardNavigation"
 import { Button } from "@/components/ui/button"
 import BirthdateSetup from "@/components/BirthdateSetup"
 
-type Subject = "mathematics" | "reading" | "science"
+type Subject = "math" | "english" | "science"
 
 interface SkillLevel {
   level: number
@@ -45,15 +45,15 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true)
   const [showBirthdateSetup, setShowBirthdateSetup] = useState(false)
 
-  const subjects: Subject[] = ["mathematics", "reading", "science"]
+  const subjects: Subject[] = ["math", "english", "science"]
   const subjectNames = {
-    mathematics: "Mathematics",
-    reading: "Reading",
+    math: "Mathematics",
+    english: "Reading",
     science: "Science",
   }
   const subjectEmojis = {
-    mathematics: "🔢",
-    reading: "📚",
+    math: "🔢",
+    english: "📚",
     science: "🔬",
   }
 

@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { getOrInitializePerformanceMetrics } from '@/lib/edl'
+import type { Subject } from '@/lib/types/edl'
 
 export async function POST(request: NextRequest) {
   try {
@@ -35,8 +37,17 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to get assessment answers' }, { status: 500 })
     }
 
+    // Get user's age for EDL initialization
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('age')
+      .eq('id', user.id)
+      .single()
+
+    const chronologicalAge = profile?.age || 10
+
     // Calculate skill levels for each subject
-    const subjects = ['mathematics', 'reading', 'science'] as const
+    const subjects = ['math', 'english', 'science'] as const
     const skillLevels: { [key: string]: { level: number; percentage: number } } = {}
 
     for (const subject of subjects) {
@@ -81,6 +92,19 @@ export async function POST(request: NextRequest) {
 
         if (skillLevelError) {
           console.error('Error saving skill level:', skillLevelError)
+        }
+
+        // Initialize EDL performance metrics based on assessment results
+        try {
+          await getOrInitializePerformanceMetrics(
+            user.id,
+            subject as Subject,
+            chronologicalAge
+          )
+          console.log(`✅ EDL initialized for ${subject}: skill_level=${skillLevel}, age=${chronologicalAge}`)
+        } catch (edlError) {
+          console.error(`❌ Error initializing EDL for ${subject}:`, edlError)
+          // Don't fail the request if EDL initialization fails
         }
       }
     }

@@ -347,7 +347,389 @@ correct_answer       -- Answer index
 - **Pros:** Simple, predictable, easy to understand
 - **Cons:** Less flexible, requires manual updates
 
-**Decision Needed:** Which approach to use?
+**✅ DECISION MADE:** Simple EDL (Effective Difficulty Level) System
+
+---
+
+## 📐 Phase 2A Implementation: Simple EDL System
+
+**Status:** Documentation Phase  
+**Decision Date:** October 12, 2025
+
+### Overview
+
+The **Simple Effective Difficulty Level (EDL)** system uses performance-based adjustments to determine the optimal question difficulty for each student. Instead of rigid age-based groupings, students receive questions matched to their **effective age**, which adapts based on their accuracy.
+
+### Core Concept: Effective Age
+
+```
+Effective Age = Chronological Age + Performance Adjustment
+```
+
+**Where:**
+- `Chronological Age`: Student's actual age (7-18)
+- `Performance Adjustment`: -2 to +2, based on recent accuracy
+
+**Example:**
+- 10-year-old with 85% accuracy → Effective Age = 11 (questions from age 11)
+- 10-year-old with 55% accuracy → Effective Age = 9 (questions from age 9)
+
+### Theoretical Foundation
+
+#### 1. **Flow Theory (Csikszentmihalyi, 1990)**
+- Optimal challenge = 60-75% success rate
+- Too easy → boredom → disengagement
+- Too hard → frustration → disengagement
+- Just right → flow state → deep learning
+
+#### 2. **Zone of Proximal Development (Vygotsky, 1978)**
+- Students learn best when challenged slightly above current level
+- EDL keeps students in their ZPD by adjusting effective age
+- Scaffolded progression prevents cognitive overload
+
+#### 3. **Adaptive Learning Research**
+- VanLehn (2011): Adaptive systems improve retention by 1σ
+- Klinkenberg et al. (2011): Optimal difficulty = 75-80% accuracy
+- Our target: 60-75% accuracy (slightly conservative)
+
+### Performance Adjustment Rules
+
+| Recent Accuracy | Adjustment | Effective Age Change | Rationale |
+|-----------------|------------|----------------------|-----------|
+| ≥85% (3 quizzes) | +1 | Age → Age+1 | Mastery achieved, increase challenge |
+| ≥90% (3 quizzes) | +2 | Age → Age+2 | Exceptional performance, accelerate |
+| 50-60% (3 quizzes) | -1 | Age → Age-1 | Struggling, reduce difficulty |
+| <50% (3 quizzes) | -2 | Age → Age-2 | Severe difficulty, provide support |
+| 60-84% | 0 | No change | Optimal challenge (Flow Zone) |
+
+**Note:** Adjustments are **per subject** (student might be +1 in Math, -1 in English)
+
+### Database Schema Design
+
+#### User Performance Tracking
+
+```sql
+-- Track performance metrics per subject
+CREATE TABLE user_performance_metrics (
+  user_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
+  subject TEXT NOT NULL,
+  chronological_age INTEGER NOT NULL,        -- From profiles table
+  performance_adjustment INTEGER DEFAULT 0,  -- -2 to +2
+  effective_age INTEGER GENERATED ALWAYS AS (chronological_age + performance_adjustment) STORED,
+
+  -- Performance data
+  recent_accuracy DECIMAL,                   -- Last 3 quizzes average
+  last_3_quiz_scores INTEGER[],              -- Array of recent scores
+  total_questions_answered INTEGER DEFAULT 0,
+  total_correct INTEGER DEFAULT 0,
+
+  -- Timestamps
+  last_quiz_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+
+  PRIMARY KEY (user_id, subject),
+  CHECK (performance_adjustment BETWEEN -2 AND 2),
+  CHECK (effective_age BETWEEN 7 AND 18)
+);
+
+-- Index for efficient queries
+CREATE INDEX idx_user_perf_effective_age ON user_performance_metrics(subject, effective_age);
+```
+
+#### Question History (Avoid Repeats)
+
+```sql
+CREATE TABLE user_question_history (
+  user_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
+  question_id UUID REFERENCES questions(id) ON DELETE CASCADE,
+  answered_correctly BOOLEAN NOT NULL,
+  time_spent_seconds INTEGER,
+  answered_at TIMESTAMPTZ DEFAULT NOW(),
+
+  PRIMARY KEY (user_id, question_id)
+);
+
+CREATE INDEX idx_question_history_user ON user_question_history(user_id, answered_at DESC);
+```
+
+### Question Selection Algorithm
+
+#### Step 1: Calculate Effective Age
+
+```typescript
+/**
+ * Get or calculate effective age for a user in a subject
+ * @param userId - User's UUID
+ * @param subject - Subject (math, english, science)
+ * @param chronologicalAge - User's actual age
+ * @returns Effective age (7-18)
+ */
+async function getEffectiveAge(
+  userId: string,
+  subject: string,
+  chronologicalAge: number
+): Promise<number> {
+  const metrics = await fetchUserPerformanceMetrics(userId, subject);
+
+  if (!metrics) {
+    // First time - no adjustment
+    await createPerformanceMetrics(userId, subject, chronologicalAge);
+    return chronologicalAge;
+  }
+
+  return metrics.effective_age; // Auto-calculated by DB
+}
+```
+
+#### Step 2: Fetch Questions by Effective Age
+
+```sql
+-- Get questions matching effective age
+SELECT * FROM questions
+WHERE subject = $1
+  AND age_group = $2  -- Effective age, not chronological age
+  AND difficulty = $3
+  AND id NOT IN (
+    SELECT question_id FROM user_question_history
+    WHERE user_id = $4
+      AND answered_at > NOW() - INTERVAL '30 days'
+  )
+ORDER BY RANDOM()
+LIMIT 5;
+```
+
+#### Step 3: Update Performance After Quiz
+
+```typescript
+/**
+ * Update performance metrics after quiz completion
+ * @param userId - User's UUID
+ * @param subject - Subject
+ * @param score - Score (0-100)
+ */
+async function updatePerformanceMetrics(
+  userId: string,
+  subject: string,
+  score: number
+): Promise<void> {
+  const metrics = await fetchUserPerformanceMetrics(userId, subject);
+
+  // Update last 3 scores (rolling window)
+  const recentScores = [...(metrics.last_3_quiz_scores || []), score].slice(-3);
+
+  // Calculate average accuracy
+  const recentAccuracy = recentScores.reduce((a, b) => a + b, 0) / recentScores.length;
+
+  // Determine adjustment (only if we have 3 scores)
+  let adjustment = metrics.performance_adjustment;
+  if (recentScores.length === 3) {
+    if (recentAccuracy >= 90) adjustment = Math.min(2, adjustment + 1);
+    else if (recentAccuracy >= 85) adjustment = Math.min(2, adjustment + 1);
+    else if (recentAccuracy < 50) adjustment = Math.max(-2, adjustment - 1);
+    else if (recentAccuracy < 60) adjustment = Math.max(-2, adjustment - 1);
+    // else: 60-84% = stay in flow zone
+  }
+
+  // Update database
+  await supabase
+    .from('user_performance_metrics')
+    .upsert({
+      user_id: userId,
+      subject: subject,
+      chronological_age: metrics.chronological_age,
+      performance_adjustment: adjustment,
+      recent_accuracy: recentAccuracy,
+      last_3_quiz_scores: recentScores,
+      total_questions_answered: metrics.total_questions_answered + 1,
+      total_correct: metrics.total_correct + (score >= 60 ? 1 : 0),
+      last_quiz_at: new Date(),
+      updated_at: new Date()
+    });
+}
+```
+
+### Implementation Architecture
+
+```
+lib/edl/
+├── calculator.ts         # Effective age calculation
+├── selector.ts           # Question selection logic
+├── updater.ts            # Performance metrics updates
+├── types.ts              # TypeScript types/interfaces
+└── calibration.ts        # Testing/tuning utilities
+
+migrations/
+└── 20251012_add_edl_system.sql
+
+app/api/
+├── questions/route.ts    # Updated to use effective age
+└── performance/route.ts  # New: track performance updates
+```
+
+### Core Utility Functions
+
+```typescript
+// lib/edl/types.ts
+export interface PerformanceMetrics {
+  user_id: string;
+  subject: string;
+  chronological_age: number;
+  performance_adjustment: number;
+  effective_age: number;
+  recent_accuracy: number | null;
+  last_3_quiz_scores: number[];
+  total_questions_answered: number;
+  total_correct: number;
+}
+
+// lib/edl/calculator.ts
+export function calculatePerformanceAdjustment(
+  recentScores: number[]
+): number {
+  if (recentScores.length < 3) return 0; // Not enough data
+
+  const avgAccuracy = recentScores.reduce((a, b) => a + b, 0) / recentScores.length;
+
+  if (avgAccuracy >= 90) return 2;
+  if (avgAccuracy >= 85) return 1;
+  if (avgAccuracy < 50) return -2;
+  if (avgAccuracy < 60) return -1;
+  return 0; // Flow zone (60-84%)
+}
+
+export function calculateEffectiveAge(
+  chronologicalAge: number,
+  performanceAdjustment: number
+): number {
+  const effectiveAge = chronologicalAge + performanceAdjustment;
+  return Math.max(7, Math.min(18, effectiveAge)); // Clamp to 7-18
+}
+```
+
+### Migration Strategy
+
+#### Phase 1: Create Performance Tables
+```sql
+-- Create user_performance_metrics table
+-- Create user_question_history table
+-- Add indexes
+```
+
+#### Phase 2: Seed Initial Data
+```sql
+-- Populate metrics for existing users
+INSERT INTO user_performance_metrics (user_id, subject, chronological_age)
+SELECT id, 'math', age FROM profiles;
+-- Repeat for english, science
+```
+
+#### Phase 3: Update Application Logic
+- Update question API to use effective age
+- Add performance tracking endpoint
+- Update quiz completion flow
+
+#### Phase 4: Monitor & Tune
+- Track effective age distribution
+- Monitor accuracy rates (should cluster around 60-75%)
+- Adjust thresholds if needed
+
+### Calibration & Testing
+
+#### Key Questions to Test:
+
+1. **Are students staying in the flow zone?**
+   - Target: 60-75% average accuracy
+   - Monitor: Distribution of recent_accuracy values
+
+2. **Is progression smooth?**
+   - No sudden jumps in effective age
+   - Students should take 6-9 quizzes to move up 1 level
+
+3. **Are adjustments fair?**
+   - Gifted students should advance naturally
+   - Struggling students should get support without stigma
+
+#### Testing Utilities
+
+```typescript
+// lib/edl/calibration.ts
+export async function analyzeFlowZoneDistribution(): Promise<{
+  inFlowZone: number;      // 60-75% accuracy
+  tooEasy: number;         // >85% accuracy
+  tooHard: number;         // <60% accuracy
+}> {
+  const metrics = await fetchAllPerformanceMetrics();
+
+  let inFlow = 0, tooEasy = 0, tooHard = 0;
+
+  for (const m of metrics) {
+    if (!m.recent_accuracy) continue;
+
+    if (m.recent_accuracy >= 85) tooEasy++;
+    else if (m.recent_accuracy < 60) tooHard++;
+    else inFlow++;
+  }
+
+  return {
+    inFlowZone: (inFlow / metrics.length) * 100,
+    tooEasy: (tooEasy / metrics.length) * 100,
+    tooHard: (tooHard / metrics.length) * 100
+  };
+}
+```
+
+### Success Metrics
+
+**Quantitative:**
+- **Flow Zone Rate:** >70% of students in 60-75% accuracy range
+- **Engagement:** Time on task, quiz completion rate
+- **Learning Velocity:** Rate of effective age increase over time
+- **Retention:** Do students return daily? (streak tracking)
+
+**Qualitative:**
+- Student surveys: "Do questions feel just right?"
+- Parent feedback: "Is my child appropriately challenged?"
+- Teacher observations: Learning outcomes
+
+### Performance Considerations
+
+**Database Optimization:**
+- Generated column for `effective_age` (computed at write time)
+- Composite index on `(subject, effective_age)` for fast queries
+- Partial index on `answered_at` for recent history lookups
+
+**Caching Strategy:**
+- Cache user metrics for 5 minutes (Redis/in-memory)
+- Invalidate on quiz completion
+- Pre-fetch questions in batches
+
+**Scalability:**
+- Performance updates are per-user (no contention)
+- Question selection uses indexed queries
+- History table partitioned by month (future optimization)
+
+### Advantages Over Score-Based System
+
+| Aspect | Score System (Rejected) | EDL System (Chosen) |
+|--------|------------------------|---------------------|
+| **Theoretical Basis** | Ad-hoc formula | Flow Theory + ZPD |
+| **Simplicity** | Complex (20 score levels) | Simple (12 age levels) |
+| **Explainability** | Opaque to users | Intuitive ("age-appropriate") |
+| **Implementation** | New database column + scoring logic | Performance tracking + effective age |
+| **Research Support** | None | Strong (Csikszentmihalyi, Vygotsky, VanLehn) |
+| **Thesis Contribution** | Technical only | Theoretical + Technical |
+
+### Risks & Mitigations
+
+| Risk | Impact | Mitigation |
+|------|--------|-----------|
+| Students "game" system by failing intentionally | Lower engagement | Monitor for suspicious patterns, cap downward adjustments |
+| Not enough questions at extreme effective ages | Students see repeats | Expand question pool for ages 7-8 and 17-18 |
+| Adjustments feel too slow | Frustration | Allow faster adjustments for exceptional performance (90%+ → +2) |
+| Adjustments feel too fast | Discouragement | Require 3 quizzes before adjustment (currently implemented) |
+
+
 
 ---
 

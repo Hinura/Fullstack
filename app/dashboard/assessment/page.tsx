@@ -11,7 +11,7 @@ import { Loader2 } from 'lucide-react'
 import { useBirthdateCheck } from '@/hooks/useBirthdateCheck'
 import { useEffect } from 'react'
 
-type Subject = 'mathematics' | 'reading' | 'science'
+type Subject = 'math' | 'english' | 'science'
 type QuestionType = 'multiple_choice' | 'true_false'
 type Difficulty = 'easy' | 'medium' | 'hard'
 
@@ -24,12 +24,6 @@ interface AssessmentQuestion {
   options: string[]
   correct_answer: number
   points: number
-}
-
-interface AssessmentAnswer {
-  questionId: string
-  answer: number
-  isCorrect: boolean
 }
 
 interface UserData {
@@ -46,16 +40,15 @@ export default function AssessmentPage() {
 
   const [userData, setUserData] = useState<UserData | null>(null)
   const [currentStep, setCurrentStep] = useState<'welcome' | 'assessment' | 'results'>('welcome')
-  const [currentSubject, setCurrentSubject] = useState<Subject>('mathematics')
+  const [currentSubject, setCurrentSubject] = useState<Subject>('math')
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0)
   const [questions, setQuestions] = useState<AssessmentQuestion[]>([])
-  const [answers, setAnswers] = useState<AssessmentAnswer[]>([])
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [assessmentId, setAssessmentId] = useState<string | null>(null)
   const [skillLevels, setSkillLevels] = useState<{[key in Subject]: number}>({
-    mathematics: 1,
-    reading: 1,
+    math: 1,
+    english: 1,
     science: 1
   })
 
@@ -93,15 +86,15 @@ export default function AssessmentPage() {
     )
   }
 
-  const subjects: Subject[] = ['mathematics', 'reading', 'science']
+  const subjects: Subject[] = ['math', 'english', 'science']
   const subjectNames = {
-    mathematics: 'Mathematics',
-    reading: 'Reading',
+    math: 'Mathematics',
+    english: 'Reading',
     science: 'Science'
   }
   const subjectEmojis = {
-    mathematics: '🔢',
-    reading: '📚',
+    math: '🔢',
+    english: '📚',
     science: '🔬'
   }
 
@@ -160,7 +153,7 @@ export default function AssessmentPage() {
         .from('user_assessments')
         .insert({
           user_id: user.id,
-          current_subject: 'mathematics',
+          current_subject: 'math',
           current_question_index: 0
         })
         .select()
@@ -169,8 +162,8 @@ export default function AssessmentPage() {
       if (error) throw error
 
       setAssessmentId(assessment.id)
-      setCurrentSubject('mathematics')
-      await loadQuestionsForSubject('mathematics')
+      setCurrentSubject('math')
+      await loadQuestionsForSubject('math')
       setCurrentStep('assessment')
     } catch (error) {
       console.error('Error starting assessment:', error)
@@ -185,14 +178,6 @@ export default function AssessmentPage() {
 
     const currentQuestion = questions[currentQuestionIndex]
     const isCorrect = selectedAnswer === currentQuestion.correct_answer
-
-    const newAnswer: AssessmentAnswer = {
-      questionId: currentQuestion.id,
-      answer: selectedAnswer,
-      isCorrect
-    }
-
-    setAnswers(prev => [...prev, newAnswer])
 
     // Save answer to database
     try {
@@ -255,8 +240,8 @@ export default function AssessmentPage() {
 
         // Convert API response to frontend format
         const calculatedSkillLevels: {[key in Subject]: number} = {
-          mathematics: result.skillLevels?.mathematics?.level || 1,
-          reading: result.skillLevels?.reading?.level || 1,
+          math: result.skillLevels?.math?.level || 1,
+          english: result.skillLevels?.english?.level || 1,
           science: result.skillLevels?.science?.level || 1
         }
 

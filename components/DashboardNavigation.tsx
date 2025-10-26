@@ -5,7 +5,6 @@ import { usePathname } from "next/navigation"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
-import { getAgeAdaptation, getAgeAppropriateEmojis } from "@/lib/age-adaptations"
 import { ThemeToggle } from "@/components/theme-toggle"
 
 interface UserData {
@@ -78,10 +77,6 @@ export default function DashboardNavigation({ userData }: DashboardNavigationPro
 
   const isActive = (path: string) => pathname === path
 
-  // Get age-based adaptations if user data is available
-  const ageAdaptation = user ? getAgeAdaptation(user.age || null) : null
-  const ageEmojis = user ? getAgeAppropriateEmojis(user.age || null) : null
-
   return (
     <>
       <header className="bg-cream/95 backdrop-blur-sm border-b border-sage-blue/20 sticky top-0 z-50">
@@ -148,15 +143,15 @@ export default function DashboardNavigation({ userData }: DashboardNavigationPro
               {user && (
                 <div className="hidden md:flex items-center space-x-2 lg:space-x-3 bg-cream/95 rounded-3xl px-3 lg:px-4 py-2 shadow-soft border border-sage-blue/10">
                   <div className="flex items-center space-x-1">
-                    <span className="text-lg">{ageEmojis?.streak || '🔥'}</span>
+                    <span className="text-lg">🔥</span>
                     <span className={`text-sm font-bold text-charcoal`}>{user.streakDays}</span>
                   </div>
                   <div className="flex items-center space-x-1">
-                    <span className="text-lg">{ageEmojis?.points || '⭐'}</span>
+                    <span className="text-lg">⭐</span>
                     <span className={`text-sm font-bold text-charcoal`}>{user.points}</span>
                   </div>
                   <div className="hidden lg:flex items-center space-x-1">
-                    <span className={`text-sm font-bold text-charcoal`}>{ageEmojis?.level || ''} Level {user.currentLevel}</span>
+                    <span className={`text-sm font-bold text-charcoal`}>Level {user.currentLevel}</span>
                   </div>
                 </div>
               )}

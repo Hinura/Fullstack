@@ -25,7 +25,7 @@ export async function POST() {
       .from('user_assessments')
       .insert({
         user_id: user.id,
-        current_subject: 'mathematics',
+        current_subject: 'math',
         current_question_index: 0
       })
       .select()
