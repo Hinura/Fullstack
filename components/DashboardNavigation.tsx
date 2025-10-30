@@ -12,7 +12,7 @@ interface UserData {
   id: string
   email: string
   fullName: string
-  age?: number
+  age?: number | null
   pictureUrl?: string | null
   points: number
   currentLevel: number

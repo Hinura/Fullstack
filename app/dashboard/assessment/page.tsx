@@ -11,24 +11,25 @@ import { Loader2 } from 'lucide-react'
 import { useBirthdateCheck } from '@/hooks/useBirthdateCheck'
 import { useEffect } from 'react'
 
-type Subject = 'mathematics' | 'reading' | 'science'
-type QuestionType = 'multiple_choice' | 'true_false'
+type Subject = 'math' | 'english' | 'science'
 type Difficulty = 'easy' | 'medium' | 'hard'
 
 interface AssessmentQuestion {
   id: string
-  subject: Subject
-  question_type: QuestionType
+  subject: string
+  age: number
   difficulty: Difficulty
-  question_text: string
-  options: string[]
-  correct_answer: number
-  points: number
+  question: string
+  option_a: string
+  option_b: string
+  option_c: string
+  option_d: string
+  answer: string
 }
 
 interface AssessmentAnswer {
   questionId: string
-  answer: number
+  answer: string
   isCorrect: boolean
 }
 
@@ -46,18 +47,19 @@ export default function AssessmentPage() {
 
   const [userData, setUserData] = useState<UserData | null>(null)
   const [currentStep, setCurrentStep] = useState<'welcome' | 'assessment' | 'results'>('welcome')
-  const [currentSubject, setCurrentSubject] = useState<Subject>('mathematics')
+  const [currentSubject, setCurrentSubject] = useState<Subject>('math')
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0)
   const [questions, setQuestions] = useState<AssessmentQuestion[]>([])
   const [answers, setAnswers] = useState<AssessmentAnswer[]>([])
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null)
   const [isLoading, setIsLoading] = useState(false)
-  const [assessmentId, setAssessmentId] = useState<string | null>(null)
   const [skillLevels, setSkillLevels] = useState<{[key in Subject]: number}>({
-    mathematics: 1,
-    reading: 1,
+    math: 1,
+    english: 1,
     science: 1
   })
+  const [assessmentResults, setAssessmentResults] = useState<{[key in Subject]?: {correct: number, total: number, percentage: number}}>({})
+
 
   // Hook must be called at the top level, before any conditional returns
   const { canAccess } = useBirthdateCheck({ user: userData, redirectTo: "/dashboard/assessment" })
@@ -79,6 +81,54 @@ export default function AssessmentPage() {
     fetchUserData()
   }, [])
 
+  // Check if user has already completed assessment
+  useEffect(() => {
+    const checkAssessmentCompletion = async () => {
+      try {
+        const { data: assessmentAttempts, error } = await supabase
+          .from('quiz_attempts')
+          .select('*')
+          .eq('attempt_type', 'assessment')
+
+        if (!error && assessmentAttempts && assessmentAttempts.length >= 3) {
+          // User has completed assessment for all three subjects
+          const existingResults: {[key in Subject]?: {correct: number, total: number, percentage: number}} = {}
+          const existingSkillLevels: {[key in Subject]: number} = {
+            math: 1,
+            english: 1,
+            science: 1
+          }
+
+          assessmentAttempts.forEach((attempt) => {
+            const subject = attempt.subject as Subject
+            const percentage = attempt.score_percentage || 0
+
+            existingResults[subject] = {
+              correct: attempt.correct_answers,
+              total: attempt.total_questions,
+              percentage: Math.round(percentage)
+            }
+
+            // Convert percentage to skill level (1-5)
+            if (percentage >= 85) existingSkillLevels[subject] = 5
+            else if (percentage >= 70) existingSkillLevels[subject] = 4
+            else if (percentage >= 55) existingSkillLevels[subject] = 3
+            else if (percentage >= 40) existingSkillLevels[subject] = 2
+            else existingSkillLevels[subject] = 1
+          })
+
+          setAssessmentResults(existingResults)
+          setSkillLevels(existingSkillLevels)
+          setCurrentStep('results')
+        }
+      } catch (error) {
+        console.error("Error checking assessment completion:", error)
+      }
+    }
+
+    checkAssessmentCompletion()
+  }, [supabase])
+
   // If user needs to set birthdate, redirect to dashboard
   if (!canAccess && userData) {
     return (
@@ -93,55 +143,30 @@ export default function AssessmentPage() {
     )
   }
 
-  const subjects: Subject[] = ['mathematics', 'reading', 'science']
+  const subjects: Subject[] = ['math', 'english', 'science']
   const subjectNames = {
-    mathematics: 'Mathematics',
-    reading: 'Reading',
+    math: 'Mathematics',
+    english: 'Reading',
     science: 'Science'
   }
   const subjectEmojis = {
-    mathematics: '🔢',
-    reading: '📚',
+    math: '🔢',
+    english: '📚',
     science: '🔬'
   }
 
   // Load questions for current subject
   const loadQuestionsForSubject = async (subject: Subject) => {
     try {
-      // Get 6-8 questions per subject (2-3 of each difficulty)
-      const { data: easyQuestions } = await supabase
-        .from('assessment_questions')
-        .select('*')
-        .eq('subject', subject)
-        .eq('difficulty', 'easy')
-        .limit(2)
-        .order('id')
+      // Fetch questions from API (2 easy, 3 medium, 2 hard = 7 questions per subject)
+      const response = await fetch(`/api/assessment/questions?subject=${subject}`)
 
-      const { data: mediumQuestions } = await supabase
-        .from('assessment_questions')
-        .select('*')
-        .eq('subject', subject)
-        .eq('difficulty', 'medium')
-        .limit(3)
-        .order('id')
+      if (!response.ok) {
+        throw new Error('Failed to fetch questions')
+      }
 
-      const { data: hardQuestions } = await supabase
-        .from('assessment_questions')
-        .select('*')
-        .eq('subject', subject)
-        .eq('difficulty', 'hard')
-        .limit(2)
-        .order('id')
-
-      const allQuestions = [
-        ...(easyQuestions || []),
-        ...(mediumQuestions || []),
-        ...(hardQuestions || [])
-      ]
-
-      // Shuffle questions to randomize order
-      const shuffledQuestions = allQuestions.sort(() => Math.random() - 0.5)
-      setQuestions(shuffledQuestions)
+      const data = await response.json()
+      setQuestions(data.questions || [])
       setCurrentQuestionIndex(0)
     } catch (error) {
       console.error('Error loading questions:', error)
@@ -152,25 +177,8 @@ export default function AssessmentPage() {
   const startAssessment = async () => {
     setIsLoading(true)
     try {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
-
-      // Create assessment record
-      const { data: assessment, error } = await supabase
-        .from('user_assessments')
-        .insert({
-          user_id: user.id,
-          current_subject: 'mathematics',
-          current_question_index: 0
-        })
-        .select()
-        .single()
-
-      if (error) throw error
-
-      setAssessmentId(assessment.id)
-      setCurrentSubject('mathematics')
-      await loadQuestionsForSubject('mathematics')
+      setCurrentSubject('math')
+      await loadQuestionsForSubject('math')
       setCurrentStep('assessment')
     } catch (error) {
       console.error('Error starting assessment:', error)
@@ -181,33 +189,20 @@ export default function AssessmentPage() {
 
   // Submit answer
   const submitAnswer = async () => {
-    if (selectedAnswer === null || !assessmentId) return
+    if (selectedAnswer === null) return
 
     const currentQuestion = questions[currentQuestionIndex]
-    const isCorrect = selectedAnswer === currentQuestion.correct_answer
+    // Convert number answer (0,1,2,3) to letter answer (A,B,C,D)
+    const answerLetter = ['A', 'B', 'C', 'D'][selectedAnswer]
+    const isCorrect = answerLetter === currentQuestion.answer
 
     const newAnswer: AssessmentAnswer = {
       questionId: currentQuestion.id,
-      answer: selectedAnswer,
+      answer: answerLetter,
       isCorrect
     }
 
     setAnswers(prev => [...prev, newAnswer])
-
-    // Save answer to database
-    try {
-      await supabase
-        .from('user_assessment_answers')
-        .insert({
-          assessment_id: assessmentId,
-          question_id: currentQuestion.id,
-          user_answer: selectedAnswer,
-          is_correct: isCorrect
-        })
-    } catch (error) {
-      console.error('Error saving answer:', error)
-    }
-
     setSelectedAnswer(null)
 
     // Move to next question or subject
@@ -219,13 +214,6 @@ export default function AssessmentPage() {
       if (currentSubjectIndex < subjects.length - 1) {
         const nextSubject = subjects[currentSubjectIndex + 1]
         setCurrentSubject(nextSubject)
-        await supabase
-          .from('user_assessments')
-          .update({
-            current_subject: nextSubject,
-            current_question_index: 0
-          })
-          .eq('id', assessmentId)
         await loadQuestionsForSubject(nextSubject)
       } else {
         // Finish assessment
@@ -237,34 +225,70 @@ export default function AssessmentPage() {
   // Calculate skill levels and finish assessment
   const finishAssessment = async () => {
     try {
-      if (!assessmentId) return
+      // Calculate results per subject
+      const results: {[key in Subject]?: {correct: number, total: number}} = {}
 
-      // Call the complete assessment API
-      const response = await fetch('/api/assessment/complete', {
+      // We need to track which questions belong to which subject
+      // For now, assume 7 questions per subject in order: math, english, science
+      const questionsPerSubject = 7
+
+      subjects.forEach((subject, subjectIndex) => {
+        const subjectAnswers = answers.slice(
+          subjectIndex * questionsPerSubject,
+          (subjectIndex + 1) * questionsPerSubject
+        )
+
+        const correct = subjectAnswers.filter(a => a.isCorrect).length
+        results[subject] = {
+          correct,
+          total: subjectAnswers.length
+        }
+      })
+
+      // Save results to database
+      const response = await fetch('/api/assessment/save-result', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          assessmentId
-        })
+        body: JSON.stringify({ results })
       })
 
-      if (response.ok) {
-        const result = await response.json()
-
-        // Convert API response to frontend format
-        const calculatedSkillLevels: {[key in Subject]: number} = {
-          mathematics: result.skillLevels?.mathematics?.level || 1,
-          reading: result.skillLevels?.reading?.level || 1,
-          science: result.skillLevels?.science?.level || 1
-        }
-
-        setSkillLevels(calculatedSkillLevels)
-        setCurrentStep('results')
-      } else {
-        console.error('Error completing assessment:', await response.text())
+      if (!response.ok) {
+        throw new Error('Failed to save assessment results')
       }
+
+      // Calculate skill levels based on percentage (1-5 scale)
+      const calculatedSkillLevels: {[key in Subject]: number} = {
+        math: 1,
+        english: 1,
+        science: 1
+      }
+
+      const calculatedResults: {[key in Subject]?: {correct: number, total: number, percentage: number}} = {}
+
+      subjects.forEach(subject => {
+        if (results[subject]) {
+          const percentage = (results[subject]!.correct / results[subject]!.total) * 100
+
+          calculatedResults[subject] = {
+            correct: results[subject]!.correct,
+            total: results[subject]!.total,
+            percentage: Math.round(percentage)
+          }
+
+          // Convert percentage to skill level (1-5)
+          if (percentage >= 85) calculatedSkillLevels[subject] = 5
+          else if (percentage >= 70) calculatedSkillLevels[subject] = 4
+          else if (percentage >= 55) calculatedSkillLevels[subject] = 3
+          else if (percentage >= 40) calculatedSkillLevels[subject] = 2
+          else calculatedSkillLevels[subject] = 1
+        }
+      })
+
+      setAssessmentResults(calculatedResults)
+      setSkillLevels(calculatedSkillLevels)
+      setCurrentStep('results')
     } catch (error) {
       console.error('Error finishing assessment:', error)
     }
@@ -395,15 +419,15 @@ export default function AssessmentPage() {
             <CardContent className="p-8">
               <div className="mb-8">
                 <div className="text-sm text-coral font-medium mb-4 uppercase tracking-wide">
-                  {currentQuestion.difficulty} • {currentQuestion.points} {currentQuestion.points === 1 ? 'point' : 'points'}
+                  {currentQuestion.difficulty}
                 </div>
                 <h2 className="text-2xl font-bold text-charcoal mb-6 leading-relaxed">
-                  {currentQuestion.question_text}
+                  {currentQuestion.question}
                 </h2>
               </div>
 
               <div className="space-y-4 mb-8">
-                {currentQuestion.options.map((option, index) => (
+                {[currentQuestion.option_a, currentQuestion.option_b, currentQuestion.option_c, currentQuestion.option_d].map((option, index) => (
                   <label
                     key={index}
                     className={`flex items-center p-4 rounded-2xl border-2 cursor-pointer transition-all duration-300 hover:shadow-md ${
@@ -469,7 +493,9 @@ export default function AssessmentPage() {
                 Assessment Complete!
               </CardTitle>
               <CardDescription className="text-xl text-charcoal/70 leading-relaxed max-w-2xl mx-auto">
-                Here are your skill levels. Don&apos;t worry - we&apos;ll help you improve in every area!
+                {currentStep === 'results' && currentQuestionIndex === 0 && questions.length === 0
+                  ? "You've already completed your initial assessment. Here are your results!"
+                  : "Here are your skill levels. Don't worry - we'll help you improve in every area!"}
               </CardDescription>
             </CardHeader>
             <CardContent className="px-12 pb-12">
@@ -495,6 +521,11 @@ export default function AssessmentPage() {
                     <p className="text-lg font-semibold text-coral">
                       Level {skillLevels[subject]} of 5
                     </p>
+                    {assessmentResults[subject] && (
+                      <p className="text-sm font-medium text-charcoal/80 mt-2 mb-1">
+                        {assessmentResults[subject]!.correct} of {assessmentResults[subject]!.total} correct ({assessmentResults[subject]!.percentage}%)
+                      </p>
+                    )}
                     <p className="text-sm text-charcoal/60 mt-1">
                       {skillLevels[subject] === 1 && 'Beginner - Let&apos;s start with the basics!'}
                       {skillLevels[subject] === 2 && 'Elementary - Building your foundation'}
@@ -525,10 +556,12 @@ export default function AssessmentPage() {
 
               <div className="text-center">
                 <Button
-                  onClick={() => router.push('/dashboard/learn?welcome=true')}
+                  onClick={() => router.push(currentStep === 'results' && currentQuestionIndex === 0 && questions.length === 0 ? '/dashboard' : '/dashboard/learn?welcome=true')}
                   className="h-14 px-12 text-lg font-bold bg-gradient-to-r from-warm-green to-coral hover:from-warm-green/90 hover:to-coral/90 text-cream rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-500 hover:scale-105"
                 >
-                  Start Learning Journey
+                  {currentStep === 'results' && currentQuestionIndex === 0 && questions.length === 0
+                    ? 'Go to Dashboard'
+                    : 'Start Learning Journey'}
                 </Button>
               </div>
             </CardContent>

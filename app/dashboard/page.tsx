@@ -9,7 +9,7 @@ import DashboardNavigation from "@/components/DashboardNavigation"
 import { Button } from "@/components/ui/button"
 import BirthdateSetup from "@/components/BirthdateSetup"
 
-type Subject = "mathematics" | "reading" | "science"
+type Subject = "math" | "english" | "science"
 
 interface SkillLevel {
   level: number
@@ -21,7 +21,8 @@ interface DashboardData {
     id: string
     email: string
     fullName: string
-    age: number
+    birthdate: string | null  // Can be null for Google OAuth users
+    age: number | null        // Can be null for Google OAuth users
     points: number
     currentLevel: number
     streakDays: number
@@ -44,52 +45,6 @@ export default function DashboardPage() {
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null)
   const [loading, setLoading] = useState(true)
   const [showBirthdateSetup, setShowBirthdateSetup] = useState(false)
-
-  const subjects: Subject[] = ["mathematics", "reading", "science"]
-  const subjectNames = {
-    mathematics: "Mathematics",
-    reading: "Reading",
-    science: "Science",
-  }
-  const subjectEmojis = {
-    mathematics: "🔢",
-    reading: "📚",
-    science: "🔬",
-  }
-
-  const getSkillLevelName = (level: number) => {
-    switch (level) {
-      case 1:
-        return "Beginner"
-      case 2:
-        return "Elementary"
-      case 3:
-        return "Intermediate"
-      case 4:
-        return "Advanced"
-      case 5:
-        return "Expert"
-      default:
-        return "Unknown"
-    }
-  }
-
-  const getSkillLevelColor = (level: number) => {
-    switch (level) {
-      case 1:
-        return "from-coral/60 to-coral"
-      case 2:
-        return "from-coral to-warm-green/60"
-      case 3:
-        return "from-warm-green/60 to-warm-green"
-      case 4:
-        return "from-warm-green to-sage-blue/60"
-      case 5:
-        return "from-sage-blue to-sage-blue"
-      default:
-        return "from-charcoal/30 to-charcoal/50"
-    }
-  }
 
   useEffect(() => {
     if (searchParams.get("welcome") === "true") {
@@ -161,18 +116,20 @@ export default function DashboardPage() {
     )
   }
 
-  const { user, skillLevels, stats, hasCompletedAssessment } = dashboardData
+  const { user, stats, hasCompletedAssessment } = dashboardData
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-cream via-sage-blue/5 to-coral/5">
       <DashboardNavigation userData={user} />
 
-      {/* Birthdate Setup Modal */}
+      {/* Birthdate Setup Modal - BLOCKING */}
       {showBirthdateSetup && (
         <BirthdateSetup onComplete={handleBirthdateSetupComplete} />
       )}
 
-      <main className="max-w-7xl mx-auto px-6 py-8">
+      {/* Only show dashboard content if birthdate is set */}
+      {!showBirthdateSetup && (
+        <main className="max-w-7xl mx-auto px-6 py-8">
         {showWelcome && (
           <Alert className="mb-8 border-2 border-warm-green/30 bg-warm-green/10 backdrop-blur-sm rounded-3xl shadow-soft">
             <AlertDescription className="text-warm-green/90">
@@ -267,55 +224,6 @@ export default function DashboardPage() {
                   <div className="text-sm text-charcoal/60">Total Points</div>
                 </CardContent>
               </Card>
-            </div>
-
-            <div className="mb-12 bg-cream/95 rounded-3xl p-8 shadow-soft">
-              <h2 className="text-3xl font-bold text-charcoal mb-8 flex items-center">
-                <span className="mr-4">📊</span>
-                Skill Level Overview
-              </h2>
-              <div className="space-y-6">
-                {subjects.map((subject) => {
-                  const skill = skillLevels[subject]
-                  const hasSkillData = skill && skill.level > 0
-
-                  return (
-                    <div
-                      key={subject}
-                      className="flex items-center justify-between p-6 bg-sage-blue/5 rounded-3xl transition-all duration-300 hover:bg-sage-blue/10 hover:scale-[1.02]"
-                    >
-                      <div className="flex items-center space-x-6">
-                        <div
-                          className={`w-16 h-16 bg-gradient-to-br ${hasSkillData ? getSkillLevelColor(skill.level) : "from-charcoal/20 to-charcoal/30"} rounded-3xl flex items-center justify-center transition-transform duration-300 hover:rotate-6`}
-                        >
-                          <span className="text-2xl">{subjectEmojis[subject]}</span>
-                        </div>
-                        <div>
-                          <h3 className="font-bold text-charcoal text-lg">{subjectNames[subject]}</h3>
-                          <p className="text-charcoal/60 font-medium">
-                            {hasSkillData
-                              ? `Level ${skill.level} • ${getSkillLevelName(skill.level)}`
-                              : "Assessment needed"}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex items-center space-x-6">
-                        {hasSkillData && (
-                          <div className="w-32 bg-sage-blue/10 rounded-full h-3 overflow-hidden">
-                            <div
-                              className={`bg-gradient-to-r ${getSkillLevelColor(skill.level)} h-full rounded-full transition-all duration-700 ease-out`}
-                              style={{ width: `${(skill.level / 5) * 100}%` }}
-                            ></div>
-                          </div>
-                        )}
-                        <span className="text-lg font-bold text-charcoal min-w-[4rem] text-right">
-                          {hasSkillData ? `${Math.round(skill.percentage)}%` : "—"}
-                        </span>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
             </div>
           </>
         )}
@@ -450,7 +358,8 @@ export default function DashboardPage() {
             </div>
           </div>
         )}
-      </main>
+        </main>
+      )}
     </div>
   )
 }

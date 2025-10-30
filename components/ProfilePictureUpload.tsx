@@ -4,7 +4,6 @@ import { useState, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Loader2, Camera, Upload, X, User } from "lucide-react"
-import { createClient } from "@/lib/supabase/client"
 
 interface ProfilePictureUploadProps {
   userId: string
@@ -23,7 +22,6 @@ export default function ProfilePictureUpload({
   const [error, setError] = useState<string | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const supabase = createClient()
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
@@ -57,68 +55,24 @@ export default function ProfilePictureUpload({
     setError(null)
 
     try {
-      // Create unique filename
-      const fileExt = file.name.split('.').pop()
-      const fileName = `${userId}-${Date.now()}.${fileExt}`
-      const filePath = `profile-pictures/${fileName}`
+      // Create FormData and append the file
+      const formData = new FormData()
+      formData.append('avatar', file)
 
-      // Delete old profile picture if it exists
-      if (currentPictureUrl) {
-        const oldPath = currentPictureUrl.split('/').slice(-2).join('/')
-        await supabase.storage.from('avatars').remove([oldPath])
-      }
-
-      // Upload new file
-      const { error: uploadError } = await supabase.storage
-        .from('avatars')
-        .upload(filePath, file, {
-          cacheControl: '3600',
-          upsert: true
-        })
-
-      if (uploadError) {
-        throw uploadError
-      }
-
-      // Get public URL
-      const { data } = supabase.storage
-        .from('avatars')
-        .getPublicUrl(filePath)
-
-      // Update profile in database
-      console.log('Updating profile with URL:', data.publicUrl)
-      const response = await fetch('/api/profile/update-picture', {
+      // Upload via API route (handles storage upload and database update)
+      const response = await fetch('/api/profile/upload-avatar', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          pictureUrl: data.publicUrl
-        }),
+        body: formData,
       })
 
-      console.log('API Response status:', response.status)
-      console.log('API Response ok:', response.ok)
-
       if (!response.ok) {
-        let errorMessage = 'Failed to update profile'
-        try {
-          const responseText = await response.text()
-          try {
-            const errorData = JSON.parse(responseText)
-            errorMessage = errorData.error || errorMessage
-          } catch (jsonError) {
-            // Response is not JSON, use the raw text
-            errorMessage = responseText || `HTTP ${response.status}: ${response.statusText}`
-          }
-        } catch (readError) {
-          errorMessage = `HTTP ${response.status}: ${response.statusText}`
-        }
-        throw new Error(errorMessage)
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to upload image')
       }
 
-      console.log('Upload successful, calling onUploadComplete with:', data.publicUrl)
-      onUploadComplete(data.publicUrl)
+      const data = await response.json()
+      console.log('Upload successful:', data.pictureUrl)
+      onUploadComplete(data.pictureUrl)
       setPreviewUrl(null)
 
     } catch (error) {
@@ -140,11 +94,7 @@ export default function ProfilePictureUpload({
     setError(null)
 
     try {
-      // Delete from storage
-      const oldPath = currentPictureUrl.split('/').slice(-2).join('/')
-      await supabase.storage.from('avatars').remove([oldPath])
-
-      // Update profile in database
+      // Update profile to remove picture URL (API will handle storage deletion if needed)
       const response = await fetch('/api/profile/update-picture', {
         method: 'POST',
         headers: {
@@ -156,20 +106,8 @@ export default function ProfilePictureUpload({
       })
 
       if (!response.ok) {
-        let errorMessage = 'Failed to remove profile picture'
-        try {
-          const responseText = await response.text()
-          try {
-            const errorData = JSON.parse(responseText)
-            errorMessage = errorData.error || errorMessage
-          } catch (jsonError) {
-            // Response is not JSON, use the raw text
-            errorMessage = responseText || `HTTP ${response.status}: ${response.statusText}`
-          }
-        } catch (readError) {
-          errorMessage = `HTTP ${response.status}: ${response.statusText}`
-        }
-        throw new Error(errorMessage)
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to remove profile picture')
       }
 
       onUploadComplete('')

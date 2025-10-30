@@ -17,12 +17,24 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Birthdate is required' }, { status: 400 })
     }
 
-    if (!age || typeof age !== 'number' || age < 7) {
-      return NextResponse.json({ error: 'Must be at least 7 years old' }, { status: 400 })
+    if (!age || typeof age !== 'number') {
+      return NextResponse.json({ error: 'Invalid age provided' }, { status: 400 })
+    }
+
+    if (age < 7) {
+      return NextResponse.json({
+        error: 'Age requirement not met',
+        message: 'You must be at least 7 years old to use Hinura',
+        ineligible: true
+      }, { status: 403 })
     }
 
     if (age > 18) {
-      return NextResponse.json({ error: 'Hinura is designed for students aged 7-18' }, { status: 400 })
+      return NextResponse.json({
+        error: 'Age requirement not met',
+        message: 'Hinura is designed for students aged 7-18',
+        ineligible: true
+      }, { status: 403 })
     }
 
     const birthdateObj = new Date(birthdate)

@@ -1,21 +1,26 @@
 "use client"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
+import { createClient } from "@/lib/supabase/client"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Loader2, Calendar, AlertTriangle } from "lucide-react"
+import { Loader2, Calendar, AlertTriangle, LogOut } from "lucide-react"
 
 interface BirthdateSetupProps {
   onComplete: () => void
 }
 
 export default function BirthdateSetup({ onComplete }: BirthdateSetupProps) {
+  const router = useRouter()
+  const supabase = createClient()
   const [birthdate, setBirthdate] = useState("")
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [isAgeIneligible, setIsAgeIneligible] = useState(false)
 
   const calculateAge = (birthdate: string): number => {
     const today = new Date()
@@ -29,9 +34,19 @@ export default function BirthdateSetup({ onComplete }: BirthdateSetupProps) {
     return age
   }
 
+  const handleSignOut = async () => {
+    try {
+      await supabase.auth.signOut()
+      router.push("/auth/login")
+    } catch (error) {
+      console.error("Error signing out:", error)
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
+    setIsAgeIneligible(false)
 
     if (!birthdate) {
       setError("Please enter your date of birth")
@@ -39,13 +54,17 @@ export default function BirthdateSetup({ onComplete }: BirthdateSetupProps) {
     }
 
     const age = calculateAge(birthdate)
+
+    // Check age eligibility
     if (age < 7) {
-      setError("You must be at least 7 years old to use Hinura")
+      setError("We're sorry, but Hinura is designed for students aged 7-18. You must be at least 7 years old to use this platform.")
+      setIsAgeIneligible(true)
       return
     }
 
     if (age > 18) {
-      setError("Hinura is designed for students aged 7-18")
+      setError("We're sorry, but Hinura is designed for students aged 7-18. This platform is intended for younger learners.")
+      setIsAgeIneligible(true)
       return
     }
 
@@ -65,8 +84,13 @@ export default function BirthdateSetup({ onComplete }: BirthdateSetupProps) {
       if (response.ok) {
         onComplete()
       } else {
-        const error = await response.json()
-        setError(error.error || "Failed to save birthdate")
+        const errorData = await response.json()
+        setError(errorData.message || errorData.error || "Failed to save birthdate")
+
+        // If API indicates age ineligibility, show sign-out option
+        if (errorData.ineligible) {
+          setIsAgeIneligible(true)
+        }
       }
     } catch (error) {
       console.error("Error saving birthdate:", error)
@@ -83,7 +107,10 @@ export default function BirthdateSetup({ onComplete }: BirthdateSetupProps) {
   minDate.setFullYear(minDate.getFullYear() - 18)
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div
+      className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+      onClick={(e) => e.stopPropagation()} // Prevent any clicks from closing
+    >
       <Card className="w-full max-w-md rounded-3xl shadow-2xl border-0 bg-cream">
         <CardContent className="p-8">
           <div className="text-center mb-8">
@@ -94,14 +121,33 @@ export default function BirthdateSetup({ onComplete }: BirthdateSetupProps) {
             <p className="text-charcoal/70">
               We need your date of birth to provide age-appropriate educational content tailored for students aged 7-18.
             </p>
+            <p className="text-sm text-coral font-semibold mt-2">
+              ⚠️ You must complete this step to access Hinura
+            </p>
           </div>
 
           {error && (
-            <Alert className="mb-6 border-red-200 bg-red-50">
+            <Alert className={`mb-6 ${isAgeIneligible ? 'border-red-300 bg-red-50' : 'border-red-200 bg-red-50'}`}>
               <AlertTriangle className="w-4 h-4 text-red-600" />
               <AlertDescription className="text-red-600 font-medium">
                 {error}
               </AlertDescription>
+              {isAgeIneligible && (
+                <div className="mt-4 pt-4 border-t border-red-200">
+                  <p className="text-sm text-red-700 mb-3">
+                    If you believe this is a mistake, please re-enter your correct date of birth. Otherwise, you can sign out and explore other learning platforms more suitable for your age group.
+                  </p>
+                  <Button
+                    type="button"
+                    onClick={handleSignOut}
+                    variant="outline"
+                    className="w-full border-red-300 text-red-600 hover:bg-red-50"
+                  >
+                    <LogOut className="w-4 h-4 mr-2" />
+                    Sign Out
+                  </Button>
+                </div>
+              )}
             </Alert>
           )}
 
@@ -139,6 +185,18 @@ export default function BirthdateSetup({ onComplete }: BirthdateSetupProps) {
                 "Continue to Hinura"
               )}
             </Button>
+
+            {!isAgeIneligible && (
+              <Button
+                type="button"
+                onClick={handleSignOut}
+                variant="ghost"
+                className="w-full mt-3 text-charcoal/60 hover:text-charcoal hover:bg-charcoal/5"
+              >
+                <LogOut className="w-4 h-4 mr-2" />
+                Sign Out
+              </Button>
+            )}
           </form>
 
           <div className="mt-6 p-4 bg-sage-blue/10 rounded-2xl">
