@@ -5,77 +5,158 @@ import { NextResponse } from 'next/server'
 export async function POST(request: Request) {
   try {
     const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
 
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    // Get authenticated user
+    const { data: { user }, error: userError } = await supabase.auth.getUser()
+
+    if (userError || !user) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
     }
 
+    // Parse request body
     const body = await request.json()
-    const { subject, difficulty, total_questions, correct_answers, time_spent_seconds } = body
+    const {
+      subject,
+      difficulty,
+      total_questions,
+      correct_answers,
+      time_spent_seconds,
+      answered_questions // Array of question IDs
+    } = body
 
-    if (!subject || !difficulty || total_questions === undefined || correct_answers === undefined) {
-      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
+    // Validate inputs
+    if (!subject || !['math', 'english', 'science'].includes(subject)) {
+      return NextResponse.json(
+        { error: 'Invalid subject' },
+        { status: 400 }
+      )
     }
 
-    const score_percentage = (correct_answers / total_questions) * 100
-    const points_earned = correct_answers * 10 // 10 points per correct answer
+    if (!difficulty || !['easy', 'medium', 'hard', 'adaptive'].includes(difficulty)) {
+      return NextResponse.json(
+        { error: 'Invalid difficulty' },
+        { status: 400 }
+      )
+    }
 
-    const { data, error } = await supabase
+    if (typeof total_questions !== 'number' || typeof correct_answers !== 'number') {
+      return NextResponse.json(
+        { error: 'Invalid question counts' },
+        { status: 400 }
+      )
+    }
+
+    // Calculate score
+    const scorePercentage = (correct_answers / total_questions) * 100
+    const pointsEarned = correct_answers * 10
+
+    // 1. Save quiz attempt
+    const { data: attemptData, error: attemptError } = await supabase
       .from('quiz_attempts')
       .insert({
         user_id: user.id,
-        subject,
-        difficulty,
-        total_questions,
-        correct_answers,
-        score_percentage,
-        points_earned,
-        time_spent_seconds
+        subject: subject,
+        difficulty: difficulty,
+        attempt_type: 'practice',
+        total_questions: total_questions,
+        correct_answers: correct_answers,
+        score_percentage: scorePercentage,
+        points_earned: pointsEarned,
+        time_spent_seconds: time_spent_seconds || null,
+        answered_questions: answered_questions || null
       })
       .select()
       .single()
 
-    if (error) {
-      console.error('Error saving quiz attempt:', error)
-      return NextResponse.json({ error: 'Failed to save quiz attempt' }, { status: 500 })
+    if (attemptError) {
+      console.error('Error saving quiz attempt:', attemptError)
+      return NextResponse.json(
+        { error: 'Failed to save quiz attempt' },
+        { status: 500 }
+      )
     }
 
-    // Update user's total points in profile
-    const { error: updateError } = await supabase.rpc('increment_user_points', {
-      user_id: user.id,
-      points_to_add: points_earned
-    })
+    // 2. Update EDL if adaptive mode
+    let edlUpdate = null
 
-    if (updateError) {
-      console.error('Error updating points:', updateError)
-      // Don't fail the request if points update fails
+    if (difficulty === 'adaptive') {
+      const { data: edlResult, error: edlError } = await supabase
+        .rpc('update_edl_after_quiz', {
+          p_user_id: user.id,
+          p_subject: subject,
+          p_score_percentage: scorePercentage
+        })
+
+      if (edlError) {
+        console.error('Error updating EDL:', edlError)
+        // Don't fail the whole request, just log the error
+        // The quiz was still saved
+      } else {
+        edlUpdate = edlResult?.[0] || null
+      }
     }
 
-    // Update user's streak
-    const { error: streakError } = await supabase.rpc('update_user_streak', {
-      user_id: user.id
-    })
-
-    if (streakError) {
-      console.error('Error updating streak:', streakError)
-      // Don't fail the request if streak update fails
+    // 3. Prepare response
+    const response: {
+      success: boolean
+      data: {
+        quiz_result: {
+          id: string
+          score: number
+          correct: number
+          total: number
+          points_earned: number
+        }
+        edl_update?: {
+          previous_effective_age: number
+          new_effective_age: number
+          adjustment_occurred: boolean
+          adjustment_type: string
+          recent_accuracy: number
+          status: string
+          message: string
+          next_adjustment_in: number
+        }
+      }
+    } = {
+      success: true,
+      data: {
+        quiz_result: {
+          id: attemptData.id,
+          score: Math.round(scorePercentage * 10) / 10,
+          correct: correct_answers,
+          total: total_questions,
+          points_earned: pointsEarned
+        }
+      }
     }
 
-    // Update user's level based on points (exponential progression)
-    const { error: levelError } = await supabase.rpc('update_user_level', {
-      user_id: user.id
-    })
-
-    if (levelError) {
-      console.error('Error updating level:', levelError)
-      // Don't fail the request if level update fails
+    // Add EDL update info if applicable
+    if (edlUpdate) {
+      response.data.edl_update = {
+        previous_effective_age: edlUpdate.previous_effective_age,
+        new_effective_age: edlUpdate.new_effective_age,
+        adjustment_occurred: edlUpdate.adjustment_occurred,
+        adjustment_type: edlUpdate.adjustment_type,
+        recent_accuracy: Math.round(edlUpdate.recent_accuracy * 10) / 10,
+        status: edlUpdate.status,
+        message: edlUpdate.message,
+        // Calculate quizzes until next adjustment check
+        next_adjustment_in: 0 // Already have 3 scores, always ready to adjust
+      }
     }
 
-    return NextResponse.json({ success: true, data })
+    return NextResponse.json(response)
+
   } catch (error) {
-    console.error('Error in quiz-attempts POST:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    console.error('Error in quiz-attempts:', error)
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    )
   }
 }
 

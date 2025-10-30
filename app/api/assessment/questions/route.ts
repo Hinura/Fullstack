@@ -13,7 +13,8 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const subject = searchParams.get('subject')
 
-    if (!subject || !['mathematics', 'reading', 'science'].includes(subject)) {
+    // Use consistent subject names: math, english, science
+    if (!subject || !['math', 'english', 'science'].includes(subject)) {
       return NextResponse.json({ error: 'Invalid subject' }, { status: 400 })
     }
 
@@ -26,31 +27,28 @@ export async function GET(request: NextRequest) {
 
     const userAge = profile?.age || 10
 
-    // Map subject names (assessment uses 'mathematics', practice uses 'math')
-    const practiceSubject = subject === 'mathematics' ? 'math' : subject === 'reading' ? 'english' : subject
-
-    // Get questions for the subject (2 easy, 3 medium, 2 hard)
+    // Get questions for the subject (2 easy, 3 medium, 2 hard = 7 questions per subject)
     const { data: easyQuestions, error: easyError } = await supabase
       .from('questions')
       .select('*')
-      .eq('subject', practiceSubject)
-      .eq('age_group', userAge)
+      .eq('subject', subject)
+      .eq('age', userAge)
       .eq('difficulty', 'easy')
       .limit(2)
 
     const { data: mediumQuestions, error: mediumError } = await supabase
       .from('questions')
       .select('*')
-      .eq('subject', practiceSubject)
-      .eq('age_group', userAge)
+      .eq('subject', subject)
+      .eq('age', userAge)
       .eq('difficulty', 'medium')
       .limit(3)
 
     const { data: hardQuestions, error: hardError } = await supabase
       .from('questions')
       .select('*')
-      .eq('subject', practiceSubject)
-      .eq('age_group', userAge)
+      .eq('subject', subject)
+      .eq('age', userAge)
       .eq('difficulty', 'hard')
       .limit(2)
 

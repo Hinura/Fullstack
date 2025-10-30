@@ -46,54 +46,53 @@ export async function GET() {
       profile = newProfile
     }
 
-    // Get user skill levels
-    const { data: skillLevels } = await supabase
-      .from('user_skill_levels')
+    // Get assessment attempts (one-time skill assessment)
+    const { data: assessmentAttempts } = await supabase
+      .from('quiz_attempts')
       .select('*')
       .eq('user_id', user.id)
-
-    // Get assessment history
-    const { data: assessments } = await supabase
-      .from('user_assessments')
-      .select('*')
-      .eq('user_id', user.id)
-      .eq('is_completed', true)
+      .eq('attempt_type', 'assessment')
       .order('completed_at', { ascending: false })
 
-    // Get recent assessment answers for accuracy calculation
-    const { data: recentAnswers } = await supabase
-      .from('user_assessment_answers')
-      .select(`
-        *,
-        user_assessments!inner (
-          user_id,
-          is_completed
-        )
-      `)
-      .eq('user_assessments.user_id', user.id)
-      .eq('user_assessments.is_completed', true)
-      .order('answered_at', { ascending: false })
+    // Get all quiz attempts (practice + assessment) for accuracy calculation
+    const { data: allAttempts } = await supabase
+      .from('quiz_attempts')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('completed_at', { ascending: false })
       .limit(50)
 
-    // Calculate stats
-    const totalExercises = recentAnswers?.length || 0
-    const correctAnswers = recentAnswers?.filter(answer => answer.is_correct).length || 0
-    const accuracyPercentage = totalExercises > 0 ? Math.round((correctAnswers / totalExercises) * 100) : 0
+    // Calculate stats from all quiz attempts
+    const totalQuestions = allAttempts?.reduce((sum, attempt) => sum + attempt.total_questions, 0) || 0
+    const totalCorrect = allAttempts?.reduce((sum, attempt) => sum + attempt.correct_answers, 0) || 0
+    const totalExercises = allAttempts?.length || 0
+    const accuracyPercentage = totalQuestions > 0 ? Math.round((totalCorrect / totalQuestions) * 100) : 0
 
     // Calculate current streak (consecutive days with activity)
     const currentStreak = profile.streak_days || 0
 
-    // Transform skill levels for easier frontend use
-    const skillLevelsBySubject = skillLevels?.reduce((acc, skill) => {
-      acc[skill.subject] = {
-        level: skill.skill_level,
-        percentage: skill.score_percentage
-      }
-      return acc
-    }, {} as Record<string, { level: number; percentage: number }>) || {}
+    // Transform assessment results into skill levels for frontend
+    const skillLevelsBySubject: Record<string, { level: number; percentage: number }> = {}
 
-    // Determine if user has completed assessment
-    const hasCompletedAssessment = skillLevels && skillLevels.length > 0
+    assessmentAttempts?.forEach((attempt) => {
+      const percentage = attempt.score_percentage || 0
+      let skillLevel = 1
+
+      // Convert percentage to skill level (1-5) - same logic as assessment page
+      if (percentage >= 85) skillLevel = 5
+      else if (percentage >= 70) skillLevel = 4
+      else if (percentage >= 55) skillLevel = 3
+      else if (percentage >= 40) skillLevel = 2
+      else skillLevel = 1
+
+      skillLevelsBySubject[attempt.subject] = {
+        level: skillLevel,
+        percentage: Math.round(percentage)
+      }
+    })
+
+    // Determine if user has completed assessment (all 3 subjects)
+    const hasCompletedAssessment = assessmentAttempts && assessmentAttempts.length >= 3
 
     return NextResponse.json({
       user: {
@@ -113,13 +112,13 @@ export async function GET() {
       skillLevels: skillLevelsBySubject,
       stats: {
         totalExercises,
-        correctAnswers,
+        correctAnswers: totalCorrect,
         accuracyPercentage,
         streakDays: currentStreak,
-        completedAssessments: assessments?.length || 0
+        completedAssessments: assessmentAttempts?.length || 0
       },
       hasCompletedAssessment,
-      assessmentHistory: assessments || []
+      assessmentHistory: assessmentAttempts || []
     })
   } catch (error) {
     console.error('Dashboard data error:', error)

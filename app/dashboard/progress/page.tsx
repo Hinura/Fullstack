@@ -4,6 +4,8 @@ import { useEffect, useState } from "react"
 import { Loader2, TrendingUp, Award, Target, Calendar, BarChart3 } from "lucide-react"
 import DashboardNavigation from "@/components/DashboardNavigation"
 import { useBirthdateCheck } from "@/hooks/useBirthdateCheck"
+import { EDLStatusCard } from "@/components/EDLStatusCard"
+import type { EDLStatus, PerformanceAdjustment } from "@/lib/edl/types"
 import { CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts"
 import {
   Card,
@@ -42,20 +44,42 @@ interface QuizAttempt {
   completed_at: string
 }
 
-interface SubjectStats {
-  subject: string
-  totalAttempts: number
-  averageScore: number
-  totalPoints: number
-  bestScore: number
-}
-
 export default function ProgressPage() {
   const [userData, setUserData] = useState<UserData | null>(null)
   const [attempts, setAttempts] = useState<QuizAttempt[]>([])
   const [loading, setLoading] = useState(true)
+  const [edlStatus, setEdlStatus] = useState<{
+    subjects: Record<string, {
+      chronological_age: number
+      performance_adjustment: PerformanceAdjustment
+      effective_age: number
+      recent_accuracy: number | null
+      total_quizzes: number
+      has_completed_assessment: boolean
+      last_quiz_at: string | null
+      status: EDLStatus
+      next_adjustment_in: number
+    }>
+    overall_status: {
+      average_accuracy: number
+      subjects_in_flow_zone: number
+      subjects_advanced: number
+      subjects_needing_support: number
+    }
+  } | null>(null)
 
   const { canAccess } = useBirthdateCheck({ user: userData, redirectTo: "/dashboard/progress" })
+
+  const subjectNames = {
+    math: "Mathematics",
+    english: "Reading",
+    science: "Science",
+  }
+  const subjectEmojis = {
+    math: "🔢",
+    english: "📚",
+    science: "🔬",
+  }
 
   useEffect(() => {
     fetchData()
@@ -71,6 +95,11 @@ export default function ProgressPage() {
       if (userResponse.ok) {
         const data = await userResponse.json()
         setUserData(data.user)
+
+        // Fetch EDL status if assessment completed
+        if (data.hasCompletedAssessment) {
+          fetchEDLStatus()
+        }
       }
 
       if (attemptsResponse.ok) {
@@ -84,22 +113,16 @@ export default function ProgressPage() {
     }
   }
 
-  const getSubjectStats = (): SubjectStats[] => {
-    const subjects = ['math', 'english', 'science']
-    return subjects.map(subject => {
-      const subjectAttempts = attempts.filter(a => a.subject === subject)
-      return {
-        subject,
-        totalAttempts: subjectAttempts.length,
-        averageScore: subjectAttempts.length > 0
-          ? subjectAttempts.reduce((sum, a) => sum + a.score_percentage, 0) / subjectAttempts.length
-          : 0,
-        totalPoints: subjectAttempts.reduce((sum, a) => sum + a.points_earned, 0),
-        bestScore: subjectAttempts.length > 0
-          ? Math.max(...subjectAttempts.map(a => a.score_percentage))
-          : 0
+  const fetchEDLStatus = async () => {
+    try {
+      const response = await fetch("/api/edl/status")
+      if (response.ok) {
+        const data = await response.json()
+        setEdlStatus(data.data)
       }
-    })
+    } catch (error) {
+      console.error("Error fetching EDL status:", error)
+    }
   }
 
   const getRecentActivity = () => {
@@ -211,7 +234,6 @@ export default function ProgressPage() {
   }
 
   const stats = getTotalStats()
-  const subjectStats = getSubjectStats()
   const recentActivity = getRecentActivity()
   const chartData = getChartData()
 
@@ -289,44 +311,64 @@ export default function ProgressPage() {
           </div>
         </div>
 
-        {/* Subject Performance */}
+        {/* Adaptive Learning Levels (EDL Status) */}
         <div className="mb-8">
-          <h2 className="text-3xl font-bold text-charcoal mb-6">Subject Performance</h2>
-          <div className="grid md:grid-cols-3 gap-6">
-            {subjectStats.map((stat) => {
-              const colors = getSubjectColor(stat.subject)
-              return (
-                <div key={stat.subject} className={`bg-cream/95 rounded-3xl p-6 shadow-soft border-2 border-${colors.border}`}>
-                  <div className="flex items-center mb-4">
-                    <div className={`w-14 h-14 bg-${colors.light} rounded-2xl flex items-center justify-center mr-4`}>
-                      <span className="text-3xl">{colors.icon}</span>
-                    </div>
-                    <div>
-                      <h3 className="text-2xl font-bold text-charcoal capitalize">{stat.subject}</h3>
-                      <p className="text-sm text-charcoal/60">{stat.totalAttempts} quizzes completed</p>
-                    </div>
-                  </div>
+          <h2 className="text-3xl font-bold text-charcoal mb-6 flex items-center">
+            <span className="mr-4">📊</span>
+            Adaptive Learning Levels
+          </h2>
+          {edlStatus ? (
+            <>
+              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mb-8">
+                {Object.entries(edlStatus.subjects).map(([subject, status]) => (
+                  <EDLStatusCard
+                    key={subject}
+                    subject={subject}
+                    status={status}
+                    subjectNames={subjectNames}
+                    subjectEmojis={subjectEmojis}
+                  />
+                ))}
+              </div>
 
-                  <div className="space-y-3">
-                    <div className="flex justify-between items-center">
-                      <span className="text-charcoal/70">Average Score</span>
-                      <span className={`text-xl font-bold text-${colors.bg}`}>{Math.round(stat.averageScore)}%</span>
+              {/* Overall EDL Stats */}
+              {edlStatus.overall_status && (
+                <div className="bg-gradient-to-br from-coral/10 via-warm-green/10 to-sage-blue/10 rounded-3xl p-8 shadow-soft">
+                  <h3 className="text-2xl font-bold text-charcoal mb-6">Overall Progress</h3>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                    <div className="text-center">
+                      <p className="text-4xl font-bold text-coral mb-2">
+                        {edlStatus.overall_status.average_accuracy}%
+                      </p>
+                      <p className="text-sm text-charcoal/70">Average Accuracy</p>
                     </div>
-                    <div className="w-full bg-sage-blue/10 rounded-full h-2">
-                      <div
-                        className={`bg-${colors.bg} h-2 rounded-full transition-all duration-500`}
-                        style={{ width: `${stat.averageScore}%` }}
-                      />
+                    <div className="text-center">
+                      <p className="text-4xl font-bold text-warm-green mb-2">
+                        {edlStatus.overall_status.subjects_in_flow_zone}
+                      </p>
+                      <p className="text-sm text-charcoal/70">In Flow Zone</p>
                     </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-charcoal/60">Best: {Math.round(stat.bestScore)}%</span>
-                      <span className="text-charcoal/60">Points: {stat.totalPoints}</span>
+                    <div className="text-center">
+                      <p className="text-4xl font-bold text-sage-blue mb-2">
+                        {edlStatus.overall_status.subjects_advanced}
+                      </p>
+                      <p className="text-sm text-charcoal/70">Advanced Subjects</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-4xl font-bold text-coral mb-2">
+                        {edlStatus.overall_status.subjects_needing_support}
+                      </p>
+                      <p className="text-sm text-charcoal/70">Need Support</p>
                     </div>
                   </div>
                 </div>
-              )
-            })}
-          </div>
+              )}
+            </>
+          ) : (
+            <div className="bg-cream/95 rounded-3xl p-8 shadow-soft text-center">
+              <p className="text-charcoal/60">Complete your assessment to unlock adaptive learning levels...</p>
+            </div>
+          )}
         </div>
 
         {/* Growth Chart */}

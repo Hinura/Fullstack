@@ -6,11 +6,12 @@ import { Button } from "@/components/ui/button"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Loader2, CheckCircle2, XCircle, ArrowLeft } from "lucide-react"
 import DashboardNavigation from "@/components/DashboardNavigation"
+import { useBirthdateCheck } from "@/hooks/useBirthdateCheck"
 
 interface Question {
   id: string
   subject: string
-  age_group: number
+  age: number
   difficulty: string
   question: string
   option_a: string
@@ -18,6 +19,14 @@ interface Question {
   option_c: string
   option_d: string
   answer: string
+}
+
+interface UserData {
+  id: string
+  email: string
+  fullName: string
+  birthdate?: string
+  age?: number
 }
 
 interface QuizState {
@@ -33,6 +42,7 @@ function PracticeContent() {
   const subject = searchParams.get('subject')
   const difficulty = searchParams.get('difficulty') || 'adaptive'
 
+  const [userData, setUserData] = useState<UserData | null>(null)
   const [questions, setQuestions] = useState<Question[]>([])
   const [loading, setLoading] = useState(true)
   const [quizState, setQuizState] = useState<QuizState>({
@@ -43,6 +53,36 @@ function PracticeContent() {
   })
   const [showFeedback, setShowFeedback] = useState(false)
   const [startTime, setStartTime] = useState<number>(Date.now())
+  const [edlUpdate, setEdlUpdate] = useState<{
+    previous_effective_age: number
+    new_effective_age: number
+    adjustment_occurred: boolean
+    adjustment_type: string
+    recent_accuracy: number
+    status: string
+    message: string
+    next_adjustment_in: number
+  } | null>(null)
+
+  // Hook must be called at the top level, before any conditional returns
+  const { canAccess } = useBirthdateCheck({ user: userData, redirectTo: "/dashboard/practice" })
+
+  // Fetch user data
+  useEffect(() => {
+    const fetchUserData = async () => {
+      try {
+        const response = await fetch("/api/dashboard/data")
+        if (response.ok) {
+          const data = await response.json()
+          setUserData(data.user)
+        }
+      } catch (error) {
+        console.error("Error fetching user data:", error)
+      }
+    }
+
+    fetchUserData()
+  }, [])
 
   useEffect(() => {
     if (!subject) {
@@ -58,10 +98,12 @@ function PracticeContent() {
       const response = await fetch(`/api/questions?subject=${subject}&difficulty=${difficulty}&limit=10`)
       if (response.ok) {
         const data = await response.json()
-        setQuestions(data.questions)
+        // Handle new API response structure: data.data.questions
+        const questionsList = data.data?.questions || data.questions || []
+        setQuestions(questionsList)
         setQuizState(prev => ({
           ...prev,
-          selectedAnswers: new Array(data.questions.length).fill(null)
+          selectedAnswers: new Array(questionsList.length).fill(null)
         }))
       }
     } catch (error) {
@@ -79,7 +121,7 @@ function PracticeContent() {
 
   const saveQuizAttempt = async (correctAnswers: number, timeSpentSeconds: number) => {
     try {
-      await fetch('/api/quiz-attempts', {
+      const response = await fetch('/api/quiz-attempts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -87,9 +129,18 @@ function PracticeContent() {
           difficulty,
           total_questions: questions.length,
           correct_answers: correctAnswers,
-          time_spent_seconds: timeSpentSeconds
+          time_spent_seconds: timeSpentSeconds,
+          answered_questions: questions.map(q => q.id)
         })
       })
+
+      if (response.ok) {
+        const data = await response.json()
+        // Store EDL update info if available
+        if (data.data?.edl_update) {
+          setEdlUpdate(data.data.edl_update)
+        }
+      }
     } catch (error) {
       console.error('Error saving quiz attempt:', error)
     }
@@ -136,6 +187,21 @@ function PracticeContent() {
   }
 
   const subjectInfo = getSubjectColor(subject || '')
+
+  // If user needs to set birthdate, redirect to dashboard
+  if (!canAccess && userData) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-cream via-sage-blue/5 to-coral/5">
+        <DashboardNavigation />
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <div className="flex items-center space-x-4 bg-cream/80 backdrop-blur-sm rounded-3xl px-8 py-6 shadow-soft">
+            <Loader2 className="h-8 w-8 animate-spin text-coral" />
+            <span className="text-xl font-medium text-charcoal">Redirecting...</span>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   if (loading) {
     return (
@@ -206,6 +272,36 @@ function PracticeContent() {
                 <div className="text-sm text-charcoal/60">Points</div>
               </div>
             </div>
+
+            {/* EDL Update Feedback */}
+            {edlUpdate && difficulty === 'adaptive' && (
+              <div className="mb-8 p-6 bg-gradient-to-r from-sage-blue/10 to-warm-green/10 rounded-2xl border-2 border-sage-blue/20">
+                <div className="text-center mb-4">
+                  <h3 className="text-xl font-bold text-charcoal mb-2">
+                    {edlUpdate.adjustment_occurred ? '🎊 Level Update!' : '📊 Progress Update'}
+                  </h3>
+                  <p className="text-lg text-charcoal/80 font-medium mb-3">{edlUpdate.message}</p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4 text-center">
+                  <div className="p-3 bg-white/50 rounded-xl">
+                    <div className="text-sm text-charcoal/60 mb-1">Learning Level</div>
+                    <div className="text-2xl font-bold text-sage-blue">
+                      Age {edlUpdate.new_effective_age}
+                      {edlUpdate.adjustment_occurred && (
+                        <span className="text-sm ml-1">
+                          {edlUpdate.adjustment_type === 'level_up' ? '↑' : '↓'}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="p-3 bg-white/50 rounded-xl">
+                    <div className="text-sm text-charcoal/60 mb-1">Recent Accuracy</div>
+                    <div className="text-2xl font-bold text-warm-green">{edlUpdate.recent_accuracy}%</div>
+                  </div>
+                </div>
+              </div>
+            )}
 
             <div className="flex gap-4 justify-center">
               <Button
@@ -289,13 +385,13 @@ function PracticeContent() {
             {['option_a', 'option_b', 'option_c', 'option_d'].map((key, idx) => {
               const optionValue = currentQ[key as keyof Question] as string
               const optionLetter = String.fromCharCode(65 + idx) // A, B, C, D
-              const isSelected = selectedAnswer === optionValue
+              const isSelected = selectedAnswer === optionLetter
               const showResult = showFeedback && isSelected
 
               return (
                 <button
                   key={key}
-                  onClick={() => !showFeedback && handleAnswerSelect(optionValue)}
+                  onClick={() => !showFeedback && handleAnswerSelect(optionLetter)}
                   disabled={showFeedback}
                   className={`w-full text-left p-4 rounded-xl border-2 transition-all duration-300 ${
                     showResult && isCorrect ? 'border-warm-green bg-warm-green/10' :
