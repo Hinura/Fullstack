@@ -25,6 +25,25 @@ export default function LearnPage() {
   const [showWelcome, setShowWelcome] = useState(false)
   const [userData, setUserData] = useState<UserData | null>(null)
 
+  // === AI Recommendations ===
+  const [recs, setRecs] = useState<{ subject: string; difficulty: string; reason: string }[] | null>(null)
+
+  useEffect(() => {
+    ;(async () => {
+      try {
+        const res = await fetch("/api/ai/recommendations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ origin: "learn" }) 
+      });
+        const data = await res.json()
+        if (res.ok) setRecs(data?.data?.recommendations ?? null)
+      } catch (e) {
+        console.error("Error fetching recommendations:", e)
+      }
+    })()
+  }, [])
+
   // Hook must be called at the top level, before any conditional returns
   const { canAccess } = useBirthdateCheck({ user: userData, redirectTo: "/dashboard/learn" })
 
@@ -351,7 +370,7 @@ export default function LearnPage() {
               <span className="mr-3">💡</span>
               Recommended for You
             </h3>
-            <div className="space-y-4">
+            {/* <div className="space-y-4">
               <div className="p-4 bg-gradient-to-r from-coral/10 to-warm-green/10 rounded-xl border-l-4 border-coral">
                 <h4 className="font-semibold text-charcoal mb-1">Mathematics Fractions</h4>
                 <p className="text-sm text-charcoal/60 mb-2">You&apos;re ready for the next level!</p>
@@ -373,6 +392,29 @@ export default function LearnPage() {
                   Start Practice
                 </Button>
               </div>
+            </div> */}
+
+            <div className="space-y-4">
+              {recs
+                ? recs.map((r, i) => (
+                    <div
+                      key={i}
+                      className="p-4 bg-gradient-to-r from-coral/10 to-warm-green/10 rounded-xl border-l-4 border-coral"
+                    >
+                      <h4 className="font-semibold text-charcoal mb-1">
+                        {r.subject} — {r.difficulty}
+                      </h4>
+                      <p className="text-sm text-charcoal/60 mb-2">{r.reason}</p>
+                      <Button
+                        size="sm"
+                        className="bg-coral hover:bg-coral/90 text-cream text-xs px-3 py-1"
+                        onClick={() => startPractice(r.subject, r.difficulty)}
+                      >
+                        Start
+                      </Button>
+                    </div>
+                  ))
+                : <p className="text-charcoal/60">Loading your recommendations…</p>}
             </div>
           </div>
         </div>
