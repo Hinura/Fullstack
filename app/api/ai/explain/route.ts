@@ -37,6 +37,7 @@ export async function POST(req: NextRequest) {
 
     const json = JSON.parse(completion.choices[0]?.message?.content ?? "{}");
     return NextResponse.json({ data: json });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (e: any) {
     return NextResponse.json({ error: "AI explanation failed", detail: e.message }, { status: 500 });
   }
