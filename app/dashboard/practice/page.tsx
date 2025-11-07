@@ -624,7 +624,6 @@ function PracticeContent() {
             {/* When incorrect, let the learner ask "Why?" and/or wait for the countdown */}
             {showFeedback && !isCorrect && (
               <>
-                {/* Countdown row (only when not paused and no explanation yet) */}
 
                 {/* Why? + explanation + inline Next */}
                 <div className="mt-3 flex items-start gap-4">
