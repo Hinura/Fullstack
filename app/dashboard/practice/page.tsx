@@ -1,7 +1,7 @@
 "use client"
 
 import { useSearchParams, useRouter } from "next/navigation"
-import { useEffect, useState, Suspense } from "react"
+import { useEffect, useRef, useState, Suspense } from "react"
 import { Button } from "@/components/ui/button"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Loader2, CheckCircle2, XCircle, ArrowLeft } from "lucide-react"
@@ -64,6 +64,70 @@ function PracticeContent() {
     next_adjustment_in: number
   } | null>(null)
 
+  // AI: hint + explanation state
+  const [hint, setHint] = useState<string | null>(null)
+  const [hintLoading, setHintLoading] = useState(false)
+    // Countdown state for incorrect answers
+  const [countdown, setCountdown] = useState<number | null>(null)
+  // AI explanation loading state
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const [explanation, setExplanation] = useState<string | null>(null)
+  const [explanationLoading, setExplanationLoading] = useState(false)
+
+  // reset per-question UI state on index change
+    useEffect(() => {
+      setHint(null);
+      setExplanation(null);
+      setCountdown(null);
+      setShowFeedback(false);
+      if (timerRef.current) clearTimeout(timerRef.current);
+    }, [quizState.currentQuestion]);
+
+  // Reset hint/explanation whenever the current question changes
+    useEffect(() => {
+      if (countdown === null) return;
+
+      if (countdown === 0) {
+        // stop everything and advance
+        if (timerRef.current) clearTimeout(timerRef.current);
+        setCountdown(null);
+        nextQuestion();
+        return;
+      }
+
+      if (timerRef.current) clearTimeout(timerRef.current);
+      timerRef.current = setTimeout(() => {
+        setCountdown((c) => (c === null ? null : c - 1));
+      }, 1000);
+
+      return () => {
+        if (timerRef.current) clearTimeout(timerRef.current);
+      };
+    }, [countdown]);
+
+    function nextQuestion() {
+    if (quizState.currentQuestion < questions.length - 1) {
+      setQuizState(prev => ({
+        ...prev,
+        currentQuestion: prev.currentQuestion + 1
+      }))
+      setShowFeedback(false)
+    } else {
+      // Calculate final score
+      const score = quizState.selectedAnswers.reduce((acc, answer, idx) => {
+        return acc + (answer === questions[idx].answer ? 1 : 0)
+      }, 0)
+
+      // Calculate time spent
+      const timeSpentSeconds = Math.floor((Date.now() - startTime) / 1000)
+
+      // Save quiz attempt to database
+      saveQuizAttempt(score, timeSpentSeconds)
+
+      setQuizState(prev => ({ ...prev, score, isComplete: true }))
+    }
+  }
+
   // Hook must be called at the top level, before any conditional returns
   const { canAccess } = useBirthdateCheck({ user: userData, redirectTo: "/dashboard/practice" })
 
@@ -113,6 +177,63 @@ function PracticeContent() {
     }
   }
 
+  // === AI: getHint ===
+  async function getHint() {
+    if (!currentQ) return
+    setHintLoading(true)
+    setHint(null)
+    try {
+      const res = await fetch("/api/ai/hint", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          subject: currentQ.subject,
+          age: userData?.age ?? null,
+          difficulty: currentQ.difficulty,
+          question: currentQ.question,
+          options: [currentQ.option_a, currentQ.option_b, currentQ.option_c, currentQ.option_d],
+        }),
+      })
+      const data = await res.json()
+      if (res.ok) setHint(data?.data?.hint ?? null)
+    } catch (e) {
+      console.error("AI hint error:", e)
+    } finally {
+      setHintLoading(false)
+    }
+  }
+
+  // === AI: getExplanation ===
+    async function getExplanation() {
+      if (!currentQ) return;
+      //stop & clear the timer
+      setCountdown(null);
+      if (timerRef.current) clearTimeout(timerRef.current);
+
+      try {
+        setExplanationLoading(true);
+        setExplanation(null);
+        const res = await fetch("/api/ai/explain", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            subject: currentQ.subject,
+            age: userData?.age ?? null,
+            question: currentQ.question,
+            options: [currentQ.option_a, currentQ.option_b, currentQ.option_c, currentQ.option_d],
+            correctAnswer: currentQ.answer,
+            userAnswer: selectedAnswer ?? null,
+          }),
+        });
+        const data = await res.json();
+        if (res.ok) setExplanation(data?.data?.explanation ?? null);
+      } catch (e) {
+        console.error("AI explanation error:", e);
+      } finally {
+        setExplanationLoading(false);
+      }
+    }
+
   const handleAnswerSelect = (answer: string) => {
     const newAnswers = [...quizState.selectedAnswers]
     newAnswers[quizState.currentQuestion] = answer
@@ -146,32 +267,48 @@ function PracticeContent() {
     }
   }
 
-  const handleNext = () => {
-    setShowFeedback(true)
+  // const handleNext = () => {
+  //   setShowFeedback(true)
 
-    setTimeout(() => {
-      if (quizState.currentQuestion < questions.length - 1) {
-        setQuizState(prev => ({
-          ...prev,
-          currentQuestion: prev.currentQuestion + 1
-        }))
-        setShowFeedback(false)
-      } else {
-        // Calculate final score
-        const score = quizState.selectedAnswers.reduce((acc, answer, idx) => {
-          return acc + (answer === questions[idx].answer ? 1 : 0)
-        }, 0)
+  //   setTimeout(() => {
+  //     if (quizState.currentQuestion < questions.length - 1) {
+  //       setQuizState(prev => ({
+  //         ...prev,
+  //         currentQuestion: prev.currentQuestion + 1
+  //       }))
+  //       setShowFeedback(false)
+  //     } else {
+  //       // Calculate final score
+  //       const score = quizState.selectedAnswers.reduce((acc, answer, idx) => {
+  //         return acc + (answer === questions[idx].answer ? 1 : 0)
+  //       }, 0)
 
-        // Calculate time spent
-        const timeSpentSeconds = Math.floor((Date.now() - startTime) / 1000)
+  //       // Calculate time spent
+  //       const timeSpentSeconds = Math.floor((Date.now() - startTime) / 1000)
 
-        // Save quiz attempt to database
-        saveQuizAttempt(score, timeSpentSeconds)
+  //       // Save quiz attempt to database
+  //       saveQuizAttempt(score, timeSpentSeconds)
 
-        setQuizState(prev => ({ ...prev, score, isComplete: true }))
-      }
-    }, 1500)
-  }
+  //       setQuizState(prev => ({ ...prev, score, isComplete: true }))
+  //     }
+  //   }, 1500)
+  // }
+
+        const handleNext = () => {
+          setShowFeedback(true);
+
+          if (isCorrect) {
+            // short pause for a correct answer
+            setTimeout(() => {
+              nextQuestion();
+            }, 1000);
+            return;
+          }
+
+          // incorrect → start a fresh countdown window
+          if (timerRef.current) clearTimeout(timerRef.current);
+          setCountdown(10);
+        };
 
   const currentQ = questions[quizState.currentQuestion]
   const selectedAnswer = quizState.selectedAnswers[quizState.currentQuestion]
@@ -415,10 +552,35 @@ function PracticeContent() {
               )
             })}
           </div>
+          {/* AI Hint */}
+            <div className="mt-6 flex items-center gap-4">
+              <Button
+                onClick={getHint}
+                disabled={hintLoading || showFeedback}
+                className="bg-gradient-to-r from-sage-blue to-sage-blue/80 text-cream hover:from-sage-blue/90 hover:to-sage-blue/70 font-semibold px-5 py-2 rounded-xl transition-all duration-300 disabled:opacity-60"
+              >
+                {hintLoading ? (
+                  <>
+                    <Loader2 className="animate-spin h-4 w-4 mr-2" />
+                    Thinking...
+                  </>
+                ) : (
+                  <>
+                    💡 Need a Hint
+                  </>
+                )}
+              </Button>
+
+              {hint && (
+                <p className="text-charcoal/80 italic bg-sage-blue/10 px-4 py-2 rounded-xl border border-sage-blue/20">
+                  {hint}
+                </p>
+              )}
+            </div>
         </div>
 
         {/* Feedback Message */}
-        {showFeedback && (
+        {/* {showFeedback && (
           <Alert className={`mb-6 border-2 ${isCorrect ? 'border-warm-green/30 bg-warm-green/10' : 'border-coral/30 bg-coral/10'}`}>
             <AlertDescription className={isCorrect ? 'text-warm-green' : 'text-coral'}>
               <div className="flex items-center space-x-3">
@@ -434,7 +596,97 @@ function PracticeContent() {
               </div>
             </AlertDescription>
           </Alert>
-        )}
+        )} */}
+
+        {/* Feedback Message */}
+          {showFeedback && (
+            <Alert
+              className={`mb-4 border-2 ${
+                isCorrect ? "border-warm-green/30 bg-warm-green/10" : "border-coral/30 bg-coral/10"
+              }`}
+            >
+              <AlertDescription className={isCorrect ? "text-warm-green" : "text-coral"}>
+                <div className="flex items-center space-x-3">
+                  <span className="text-2xl">{isCorrect ? "✅" : "❌"}</span>
+                  <div>
+                    <p className="font-bold">
+                      {isCorrect ? "Correct!" : "Not quite right"}
+                    </p>
+                    {!isCorrect && (
+                      <p className="text-sm">The correct answer is: {currentQ.answer}</p>
+                    )}
+                  </div>
+                </div>
+              </AlertDescription>
+            </Alert>
+          )}
+
+            {/* When incorrect, let the learner ask "Why?" and/or wait for the countdown */}
+            {showFeedback && !isCorrect && (
+              <>
+                {/* Countdown row (only when not paused and no explanation yet) */}
+
+                {/* Why? + explanation + inline Next */}
+                <div className="mt-3 flex items-start gap-4">
+                  <Button
+                    onClick={getExplanation}
+                    disabled={explanationLoading}
+                    className="bg-gradient-to-r from-sage-blue to-sage-blue/80 text-cream hover:from-sage-blue/90 hover:to-sage-blue/70 font-semibold px-5 py-2 rounded-xl transition-all duration-300 disabled:opacity-60"
+                    size="sm"
+                  >
+                    {explanationLoading ? (
+                      <>
+                        <Loader2 className="animate-spin h-4 w-4 mr-2" />
+                        Getting why...
+                      </>
+                    ) : (
+                      <>🧠 Why?</>
+                    )}
+                  </Button>
+
+                  {explanation && (
+                    <div className="flex-1">
+                      <p className="text-charcoal/80 bg-sage-blue/10 px-4 py-3 rounded-xl border border-sage-blue/20">
+                        {explanation}
+                      </p>
+                      <div className="mt-2 flex items-center justify-between">
+                        <p className="text-sm text-charcoal/60 italic">
+                          ⏸ Countdown paused while you review the explanation.
+                        </p>
+                        <button
+                          onClick={() => {
+                            if (timerRef.current) clearTimeout(timerRef.current);
+                            nextQuestion(); // go forward from the explanation
+                          }}
+                          className="text-sage-blue font-semibold hover:underline"
+                        >
+                          Next question →
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {countdown !== null && !explanation && !explanationLoading && (
+                  <div className="mt-4 flex items-center justify-between rounded-2xl bg-cream/80 border border-sage-blue/20 px-5 py-4">
+                    <span className="text-charcoal/80">
+                      ⏳ Next question in <strong>{countdown}s</strong>
+                    </span>
+                    <button
+                      onClick={() => {
+                        if (timerRef.current) clearTimeout(timerRef.current);
+                        setCountdown(null);
+                        nextQuestion(); // skip immediately
+                      }}
+                      className="text-sage-blue font-semibold hover:underline"
+                    >
+                      Skip now
+                    </button>
+                  </div>
+                )}
+              </>
+            )}
+
 
         {/* Next Button */}
         <Button

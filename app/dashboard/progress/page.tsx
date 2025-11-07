@@ -7,6 +7,7 @@ import { useBirthdateCheck } from "@/hooks/useBirthdateCheck"
 import { EDLStatusCard } from "@/components/EDLStatusCard"
 import type { EDLStatus, PerformanceAdjustment } from "@/lib/edl/types"
 import { CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts"
+import { Button } from "@/components/ui/button"
 import {
   Card,
   CardContent,
@@ -47,7 +48,6 @@ interface QuizAttempt {
 export default function ProgressPage() {
   const [userData, setUserData] = useState<UserData | null>(null)
   const [attempts, setAttempts] = useState<QuizAttempt[]>([])
-  const [loading, setLoading] = useState(true)
   const [edlStatus, setEdlStatus] = useState<{
     subjects: Record<string, {
       chronological_age: number
@@ -68,6 +68,20 @@ export default function ProgressPage() {
     }
   } | null>(null)
 
+  // === AI-Generated Insights ===
+  const [insights, setInsights] = useState<{ summary: string; goals: string[] } | null>(null)
+  const [pageLoading, setPageLoading] = useState(true);
+
+const [insightsLoading, setInsightsLoading] = useState(false);
+const [insightDots, setInsightDots] = useState(".");
+useEffect(() => {
+  if (!insightsLoading) return;
+  const t = setInterval(() => {
+    setInsightDots((d) => (d.length < 3 ? d + "." : "."));
+  }, 500);
+  return () => clearInterval(t);
+}, [insightsLoading]);
+
   const { canAccess } = useBirthdateCheck({ user: userData, redirectTo: "/dashboard/progress" })
 
   const subjectNames = {
@@ -82,36 +96,31 @@ export default function ProgressPage() {
   }
 
   useEffect(() => {
-    fetchData()
-  }, [])
+    fetchData();
+  }, []);
 
   const fetchData = async () => {
     try {
+      setPageLoading(true);
       const [userResponse, attemptsResponse] = await Promise.all([
         fetch("/api/dashboard/data"),
-        fetch("/api/quiz-attempts")
-      ])
-
+        fetch("/api/quiz-attempts"),
+      ]);
       if (userResponse.ok) {
-        const data = await userResponse.json()
-        setUserData(data.user)
-
-        // Fetch EDL status if assessment completed
-        if (data.hasCompletedAssessment) {
-          fetchEDLStatus()
-        }
+        const data = await userResponse.json();
+        setUserData(data.user);
+        if (data.hasCompletedAssessment) fetchEDLStatus();
       }
-
       if (attemptsResponse.ok) {
-        const data = await attemptsResponse.json()
-        setAttempts(data.attempts || [])
+        const data = await attemptsResponse.json();
+        setAttempts(data.attempts || []);
       }
-    } catch (error) {
-      console.error("Error fetching data:", error)
+    } catch (e) {
+      console.error("Error fetching data:", e);
     } finally {
-      setLoading(false)
+      setPageLoading(false);
     }
-  }
+  };
 
   const fetchEDLStatus = async () => {
     try {
@@ -154,6 +163,71 @@ export default function ProgressPage() {
         science: science.length > 0 ? Math.round(science.reduce((sum, s) => sum + s, 0) / science.length) : null,
       }))
   }
+
+  async function generateInsights() {
+  // Build a short summary of latest results
+  const trendText = chartData.length > 1
+    ? `Latest scores: ${chartData
+        .slice(-3)
+        .map(
+          (d) =>
+            `${d.date} (M:${d.math ?? "-"} E:${d.english ?? "-"} S:${d.science ?? "-"})`
+        )
+        .join(", ")}`
+    : "Not enough data"
+
+  const bySubject = {
+    math: Math.round(
+      stats.totalQuizzes
+        ? attempts
+            .filter((a) => a.subject === "math")
+            .reduce((s, a) => s + a.score_percentage, 0) /
+            Math.max(1, attempts.filter((a) => a.subject === "math").length)
+        : 0
+    ),
+    english: Math.round(
+      stats.totalQuizzes
+        ? attempts
+            .filter((a) => a.subject === "english")
+            .reduce((s, a) => s + a.score_percentage, 0) /
+            Math.max(1, attempts.filter((a) => a.subject === "english").length)
+        : 0
+    ),
+    science: Math.round(
+      stats.totalQuizzes
+        ? attempts
+            .filter((a) => a.subject === "science")
+            .reduce((s, a) => s + a.score_percentage, 0) /
+            Math.max(1, attempts.filter((a) => a.subject === "science").length)
+        : 0
+    ),
+  }
+
+  try {
+    setInsightsLoading(true);          // start button animation ("Generating" + dots)
+    setInsights(null);
+
+    const res = await fetch("/api/ai/insights", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        age: userData?.age ?? null,
+        aggregates: {
+          avgScore: Math.round(stats.averageScore),
+          quizzes: stats.totalQuizzes,
+          bySubject,
+        },
+        trendText,
+      }),
+    })
+    const data = await res.json()
+    if (res.ok) setInsights(data?.data ?? null)
+    } catch (e) {
+     console.error("Error generating insights:", e);
+    } finally {
+      setInsightsLoading(false);         // stop button animation
+  }
+}
 
   const chartConfig = {
     math: {
@@ -205,7 +279,7 @@ export default function ProgressPage() {
     return date.toLocaleDateString()
   }
 
-  if (loading) {
+  if (pageLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-cream via-sage-blue/5 to-coral/5">
         <DashboardNavigation />
@@ -310,6 +384,45 @@ export default function ProgressPage() {
             </div>
           </div>
         </div>
+
+        {/* AI Insights Section */}
+          <div className="mb-8 bg-cream/95 rounded-3xl p-8 shadow-soft border border-sage-blue/10">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-3xl font-bold text-charcoal flex items-center">
+                <span className="mr-3">🤖</span> AI Learning Insights
+              </h2>
+                <Button
+                  onClick={generateInsights}
+                  disabled={insightsLoading}
+                  className="bg-gradient-to-r from-sage-blue to-warm-green text-cream font-semibold px-5 py-2 rounded-xl shadow-md hover:shadow-lg transition-all duration-300 hover:scale-[1.02] disabled:opacity-60"
+                >
+                  {insightsLoading ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin mr-2 text-cream" />
+                      {`Generating${insightDots}`}
+                    </>
+                  ) : (
+                    <>
+                      <BarChart3 className="h-4 w-4 mr-2 text-cream" />
+                      Generate Insights
+                    </>
+                  )}
+                </Button>
+            </div>
+
+            {insights ? (
+              <div className="mt-3 p-4 bg-white/70 rounded-2xl border border-sage-blue/20">
+                <p className="text-charcoal/80 mb-3 leading-relaxed">{insights.summary}</p>
+                <ul className="list-disc ml-5 text-charcoal/80 space-y-1">
+                  {insights.goals.map((g, i) => (
+                    <li key={i}>{g}</li>
+                  ))}
+                </ul>
+              </div>
+            ) : (
+              <p className="text-charcoal/60">Click “Generate Insights” to view your AI summary and goals.</p>
+            )}
+          </div>
 
         {/* Adaptive Learning Levels (EDL Status) */}
         <div className="mb-8">
