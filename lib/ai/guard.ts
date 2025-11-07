@@ -16,14 +16,23 @@ export function checkRate(ip: string, key: string, limit = 20, windowMs = 60_000
 }
 
 // Tiny cache for repeated hints on identical question text (TTL 10 min)
-const cache = new Map<string, { value: any; expires: number }>();
+interface CacheEntry {
+  value: unknown;  
+  expires: number;
+}
 
-export function getCache(k: string) {
+const cache = new Map<string, CacheEntry>();
+
+export function getCache<T = unknown>(k: string): T | null {
   const v = cache.get(k);
   if (!v) return null;
-  if (Date.now() > v.expires) { cache.delete(k); return null; }
-  return v.value;
+  if (Date.now() > v.expires) {
+    cache.delete(k);
+    return null;
+  }
+  return v.value as T;
 }
-export function setCache(k: string, value: any, ttlMs = 10*60_000) {
+
+export function setCache<T>(k: string, value: T, ttlMs = 10 * 60_000): void {
   cache.set(k, { value, expires: Date.now() + ttlMs });
 }

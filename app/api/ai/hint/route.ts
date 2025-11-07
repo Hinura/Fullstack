@@ -37,6 +37,7 @@ export async function POST(req: NextRequest) {
     const json = JSON.parse(text);
     setCache(key, json, 5 * 60_000); // 5 min
     return NextResponse.json({ data: json });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (e: any) {
     return NextResponse.json({ error: "AI hint failed", detail: e.message }, { status: 500 });
   }
