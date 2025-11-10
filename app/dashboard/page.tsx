@@ -8,6 +8,8 @@ import { Loader2 } from "lucide-react"
 import DashboardNavigation from "@/components/DashboardNavigation"
 import { Button } from "@/components/ui/button"
 import BirthdateSetup from "@/components/BirthdateSetup"
+import { SubjectProgressGrid } from "@/components/gamification/SubjectProgressGrid"
+import { RecentAchievementsCard } from "@/components/gamification/RecentAchievementsCard"
 
 type Subject = "math" | "english" | "science"
 
@@ -34,9 +36,53 @@ interface DashboardData {
     accuracyPercentage: number
     streakDays: number
     completedAssessments: number
+    weeklyExercises: number
+    bestAccuracy: number
   }
   hasCompletedAssessment: boolean
   assessmentHistory: unknown[]
+  gamification?: {
+    totalPoints: number
+    overallLevel: number
+    streak: {
+      currentDays: number
+      highestDays: number
+      freezeAvailable: boolean
+    }
+    subjects: {
+      math: { level: number; points: number; pointsToNextLevel: number }
+      english: { level: number; points: number; pointsToNextLevel: number }
+      science: { level: number; points: number; pointsToNextLevel: number }
+    }
+    achievements: {
+      total: number
+      unlocked: Array<{
+        id: string
+        achievement_key: string
+        name: string
+        description: string
+        category: string
+        icon_name: string
+        points_reward: number
+        rarity: string
+        unlocked_at: string
+      }>
+      locked: Array<{
+        id: string
+        achievement_key: string
+        name: string
+        description: string
+        category: string
+        icon_name: string
+        points_reward: number
+        rarity: string
+        unlocked_at: null
+      }>
+    }
+    recentActivity: {
+      xpLast7Days: number
+    }
+  }
 }
 
 export default function DashboardPage() {
@@ -45,6 +91,7 @@ export default function DashboardPage() {
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null)
   const [loading, setLoading] = useState(true)
   const [showBirthdateSetup, setShowBirthdateSetup] = useState(false)
+  const [timeRemaining, setTimeRemaining] = useState("")
 
   useEffect(() => {
     if (searchParams.get("welcome") === "true") {
@@ -56,6 +103,26 @@ export default function DashboardPage() {
 
   useEffect(() => {
     fetchDashboardData()
+  }, [])
+
+  // Update time remaining countdown
+  useEffect(() => {
+    const updateTimeRemaining = () => {
+      const now = new Date()
+      const midnight = new Date()
+      midnight.setHours(24, 0, 0, 0)
+
+      const diff = midnight.getTime() - now.getTime()
+      const hours = Math.floor(diff / (1000 * 60 * 60))
+      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
+
+      setTimeRemaining(`${hours}h ${minutes}m`)
+    }
+
+    updateTimeRemaining()
+    const interval = setInterval(updateTimeRemaining, 60000) // Update every minute
+
+    return () => clearInterval(interval)
   }, [])
 
   const fetchDashboardData = async () => {
@@ -118,6 +185,11 @@ export default function DashboardPage() {
 
   const { user, stats, hasCompletedAssessment } = dashboardData
 
+  // Calculate XP to next level
+  const xpToNextLevel = dashboardData.gamification
+    ? (dashboardData.gamification.overallLevel ** 2 * 100) - dashboardData.gamification.totalPoints
+    : 0
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-cream via-sage-blue/5 to-coral/5">
       <DashboardNavigation userData={user} />
@@ -154,8 +226,8 @@ export default function DashboardPage() {
           </Alert>
         )}
 
-        <div className="mb-12">
-          <h1 className="text-4xl font-bold text-charcoal mb-4">
+        <div className="mb-8">
+          <h1 className="text-5xl font-bold text-charcoal mb-3">
             Hey {user.fullName.replace(/\b\w/g, c => c.toUpperCase())} 👋
           </h1>
           <p className="text-xl text-charcoal/70">
@@ -192,168 +264,197 @@ export default function DashboardPage() {
 
         {hasCompletedAssessment && (
           <>
-            <div className="grid md:grid-cols-4 gap-6 mb-12">
-              <Card className="p-6 bg-gradient-to-br from-coral/10 to-warm-green/10 border-coral/20 hover:scale-[1.1] transition-all duration-300">
-                <CardContent className="p-0 text-center">
-                  <div className="text-3xl mb-2">📚</div>
-                  <div className="text-2xl font-bold text-charcoal">{stats.totalExercises}</div>
-                  <div className="text-sm text-charcoal/60">Exercises Completed</div>
-                </CardContent>
-              </Card>
+            {/* Quick Stats */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-8">
+              <div className="relative bg-cream/95 rounded-3xl p-6 shadow-soft border-2 border-coral/20 hover:shadow-lg transition-all duration-300 hover:scale-[1.02] group overflow-hidden cursor-pointer">
+                <div className="flex flex-col items-center text-center transition-opacity duration-300 group-hover:opacity-0">
+                  <div className="w-12 h-12 bg-coral/20 rounded-2xl flex items-center justify-center mb-3">
+                    <span className="text-2xl">📚</span>
+                  </div>
+                  <div className="text-3xl font-bold text-charcoal mb-1">{stats.totalExercises}</div>
+                  <div className="text-sm text-charcoal/60 font-medium">Exercises</div>
+                </div>
 
-              <Card className="p-6 bg-gradient-to-br from-warm-green/10 to-sage-blue/10 border-warm-green/20 hover:scale-[1.1] transition-all duration-300">
-                <CardContent className="p-0 text-center">
-                  <div className="text-3xl mb-2">🎯</div>
-                  <div className="text-2xl font-bold text-charcoal">{stats.accuracyPercentage}%</div>
-                  <div className="text-sm text-charcoal/60">Overall Accuracy</div>
-                </CardContent>
-              </Card>
+                {/* Hover Overlay */}
+                <div className="absolute inset-0 bg-gradient-to-br from-coral/98 to-warm-green/98 backdrop-blur-md rounded-3xl opacity-0 group-hover:opacity-100 transition-all duration-300 flex flex-col items-center justify-center p-6">
+                  <div className="text-center space-y-3">
+                    <div className="flex justify-center">
+                      <span className="text-4xl">📅</span>
+                    </div>
+                    <div className="text-xs font-semibold text-cream/80 uppercase tracking-widest">
+                      This Week
+                    </div>
+                    <div className="text-3xl font-bold text-cream tracking-wide">
+                      {stats.weeklyExercises}
+                    </div>
+                    <div className="text-xs text-cream/70 font-medium">
+                      Exercises completed
+                    </div>
+                  </div>
+                </div>
+              </div>
 
-              <Card className="p-6 bg-gradient-to-br from-sage-blue/10 to-coral/10 border-sage-blue/20 hover:scale-[1.1] transition-all duration-300">
-                <CardContent className="p-0 text-center">
-                  <div className="text-3xl mb-2">🔥</div>
-                  <div className="text-2xl font-bold text-charcoal">{stats.streakDays}</div>
-                  <div className="text-sm text-charcoal/60">Day Streak</div>
-                </CardContent>
-              </Card>
+              <div className="relative bg-cream/95 rounded-3xl p-6 shadow-soft border-2 border-warm-green/20 hover:shadow-lg transition-all duration-300 hover:scale-[1.02] group overflow-hidden cursor-pointer">
+                <div className="flex flex-col items-center text-center transition-opacity duration-300 group-hover:opacity-0">
+                  <div className="w-12 h-12 bg-warm-green/20 rounded-2xl flex items-center justify-center mb-3">
+                    <span className="text-2xl">🎯</span>
+                  </div>
+                  <div className="text-3xl font-bold text-charcoal mb-1">{stats.accuracyPercentage}%</div>
+                  <div className="text-sm text-charcoal/60 font-medium">Accuracy</div>
+                </div>
 
-              <Card className="p-6 bg-gradient-to-br from-coral/10 to-sage-blue/10 border-coral/20 hover:scale-[1.1] transition-all duration-300">
-                <CardContent className="p-0 text-center">
-                  <div className="text-3xl mb-2">⭐</div>
-                  <div className="text-2xl font-bold text-charcoal">{user.points}</div>
-                  <div className="text-sm text-charcoal/60">Total Points</div>
-                </CardContent>
-              </Card>
+                {/* Hover Overlay */}
+                <div className="absolute inset-0 bg-gradient-to-br from-warm-green/98 to-sage-blue/98 backdrop-blur-md rounded-3xl opacity-0 group-hover:opacity-100 transition-all duration-300 flex flex-col items-center justify-center p-6">
+                  <div className="text-center space-y-3">
+                    <div className="flex justify-center">
+                      <span className="text-4xl">🏆</span>
+                    </div>
+                    <div className="text-xs font-semibold text-cream/80 uppercase tracking-widest">
+                      Best Score
+                    </div>
+                    <div className="text-3xl font-bold text-cream tracking-wide">
+                      {stats.bestAccuracy}%
+                    </div>
+                    <div className="text-xs text-cream/70 font-medium">
+                      Your highest accuracy
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="relative bg-cream/95 rounded-3xl p-6 shadow-soft border-2 border-sage-blue/20 hover:shadow-lg transition-all duration-300 hover:scale-[1.02] group overflow-hidden cursor-pointer">
+                <div className="flex flex-col items-center text-center transition-opacity duration-300 group-hover:opacity-0">
+                  <div className="w-12 h-12 bg-sage-blue/20 rounded-2xl flex items-center justify-center mb-3">
+                    <span className="text-2xl">🔥</span>
+                  </div>
+                  <div className="text-3xl font-bold text-charcoal mb-1">{stats.streakDays}</div>
+                  <div className="text-sm text-charcoal/60 font-medium">Day Streak</div>
+                </div>
+
+                {/* Hover Overlay */}
+                <div className="absolute inset-0 bg-gradient-to-br from-sage-blue/98 to-warm-green/98 backdrop-blur-md rounded-3xl opacity-0 group-hover:opacity-100 transition-all duration-300 flex flex-col items-center justify-center p-6">
+                  <div className="text-center space-y-3">
+                    {/* Icon */}
+                    <div className="flex justify-center">
+                      <span className="text-4xl">⏰</span>
+                    </div>
+
+                    {/* Label */}
+                    <div className="text-xs font-semibold text-cream/80 uppercase tracking-widest">
+                      Time Remaining
+                    </div>
+
+                    {/* Time Display */}
+                    <div className="text-3xl font-bold text-cream tracking-wide">
+                      {timeRemaining}
+                    </div>
+
+                    {/* Subtitle */}
+                    <div className="text-xs text-cream/70 font-medium">
+                      Until streak resets
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="relative bg-cream/95 rounded-3xl p-6 shadow-soft border-2 border-coral/20 hover:shadow-lg transition-all duration-300 hover:scale-[1.02] group overflow-hidden cursor-pointer">
+                <div className="flex flex-col items-center text-center transition-opacity duration-300 group-hover:opacity-0">
+                  <div className="w-12 h-12 bg-coral/20 rounded-2xl flex items-center justify-center mb-3">
+                    <span className="text-2xl">⭐</span>
+                  </div>
+                  <div className="text-3xl font-bold text-charcoal mb-1">{user.points}</div>
+                  <div className="text-sm text-charcoal/60 font-medium">Total XP</div>
+                </div>
+
+                {/* Hover Overlay */}
+                <div className="absolute inset-0 bg-gradient-to-br from-coral/98 to-sage-blue/98 backdrop-blur-md rounded-3xl opacity-0 group-hover:opacity-100 transition-all duration-300 flex flex-col items-center justify-center p-6">
+                  <div className="text-center space-y-3">
+                    <div className="flex justify-center">
+                      <span className="text-4xl">⬆️</span>
+                    </div>
+                    <div className="text-xs font-semibold text-cream/80 uppercase tracking-widest">
+                      To Next Level
+                    </div>
+                    <div className="text-3xl font-bold text-cream tracking-wide">
+                      {xpToNextLevel}
+                    </div>
+                    <div className="text-xs text-cream/70 font-medium">
+                      XP needed
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
+
+            {/* Gamification Section */}
+            {dashboardData.gamification && (
+              <div className="space-y-8 mb-8">
+                {/* Section Header */}
+                <div>
+                  <h2 className="text-3xl font-bold text-charcoal mb-2">Your Progress</h2>
+                  <p className="text-charcoal/60">Track your learning journey and achievements</p>
+                </div>
+
+                {/* Achievements */}
+                <RecentAchievementsCard
+                  unlockedAchievements={dashboardData.gamification.achievements.unlocked}
+                  lockedAchievements={dashboardData.gamification.achievements.locked}
+                  totalCount={dashboardData.gamification.achievements.total}
+                />
+
+                {/* Subject Levels */}
+                <div>
+                  <h3 className="text-3xl font-bold text-charcoal mb-6">Subject Levels</h3>
+                  <div className="grid md:grid-cols-3 gap-5">
+                    <SubjectProgressGrid
+                      subjects={[
+                        {
+                          subject: 'math',
+                          level: dashboardData.gamification.subjects.math.level,
+                          currentPoints: dashboardData.gamification.subjects.math.points,
+                          pointsToNextLevel: dashboardData.gamification.subjects.math.pointsToNextLevel
+                        },
+                        {
+                          subject: 'english',
+                          level: dashboardData.gamification.subjects.english.level,
+                          currentPoints: dashboardData.gamification.subjects.english.points,
+                          pointsToNextLevel: dashboardData.gamification.subjects.english.pointsToNextLevel
+                        },
+                        {
+                          subject: 'science',
+                          level: dashboardData.gamification.subjects.science.level,
+                          currentPoints: dashboardData.gamification.subjects.science.points,
+                          pointsToNextLevel: dashboardData.gamification.subjects.science.pointsToNextLevel
+                        }
+                      ]}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
           </>
         )}
 
-        <div className="grid lg:grid-cols-2 gap-8 mb-12">
-          {/* Achievement Progress */}
-          <div className="bg-cream/95 rounded-3xl p-8 shadow-soft transition-all duration-300 hover:shadow-lg">
-            <h3 className="text-2xl font-bold text-charcoal mb-8 flex items-center">
-              <span className="mr-4">🏆</span>
-              Recent Achievements
-            </h3>
-            <div className="space-y-4">
-              <div className="flex items-center space-x-4 p-6 bg-gradient-to-r from-coral/5 to-warm-green/5 rounded-3xl border border-coral/10 transition-all duration-300 hover:scale-[1.02] hover:border-coral/20">
-                <div className="w-12 h-12 bg-coral/20 rounded-2xl flex items-center justify-center">
-                  <span className="text-coral text-xl">🎯</span>
-                </div>
-                <div className="flex-1">
-                  <p className="font-bold text-charcoal">Assessment Completed</p>
-                  <p className="text-sm text-charcoal/60 leading-relaxed">
-                    Unlocked personalized learning • +100 points
-                  </p>
-                </div>
-              </div>
-              {stats.streakDays >= 3 && (
-                <div className="flex items-center space-x-4 p-6 bg-gradient-to-r from-warm-green/5 to-sage-blue/5 rounded-3xl border border-warm-green/10 transition-all duration-300 hover:scale-[1.02] hover:border-warm-green/20">
-                  <div className="w-12 h-12 bg-warm-green/20 rounded-2xl flex items-center justify-center">
-                    <span className="text-warm-green text-xl">🔥</span>
-                  </div>
-                  <div className="flex-1">
-                    <p className="font-bold text-charcoal">Streak Master</p>
-                    <p className="text-sm text-charcoal/60 leading-relaxed">
-                      {stats.streakDays} day learning streak • +{stats.streakDays * 10} points
-                    </p>
-                  </div>
-                </div>
-              )}
-              {stats.accuracyPercentage >= 85 && (
-                <div className="flex items-center space-x-4 p-6 bg-gradient-to-r from-sage-blue/5 to-coral/5 rounded-3xl border border-sage-blue/10 transition-all duration-300 hover:scale-[1.02] hover:border-sage-blue/20">
-                  <div className="w-12 h-12 bg-sage-blue/20 rounded-2xl flex items-center justify-center">
-                    <span className="text-sage-blue text-xl">⭐</span>
-                  </div>
-                  <div className="flex-1">
-                    <p className="font-bold text-charcoal">High Achiever</p>
-                    <p className="text-sm text-charcoal/60 leading-relaxed">Excellent accuracy rate • +50 points</p>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-
-          <div className="bg-cream/95 rounded-3xl p-8 shadow-soft transition-all duration-300 hover:shadow-lg">
-            <h3 className="text-2xl font-bold text-charcoal mb-8 flex items-center">
-              <span className="mr-4">🎯</span>
-              Today&apos;s Goals
-            </h3>
-            <div className="space-y-6">
-              <div className="p-6 bg-gradient-to-r from-warm-green/10 to-sage-blue/10 rounded-3xl border border-warm-green/20 transition-all duration-300 hover:scale-[1.02]">
-                <div className="flex items-center justify-between mb-4">
-                  <p className="font-bold text-charcoal text-base">Complete 10 exercises</p>
-                  <span className="text-sm font-bold text-warm-green bg-warm-green/10 px-3 py-1 rounded-full">
-                    {Math.min(stats.totalExercises * 10, 100)}%
-                  </span>
-                </div>
-                <div className="w-full bg-warm-green/10 rounded-full h-3 overflow-hidden mb-3">
-                  <div
-                    className="bg-gradient-to-r from-warm-green to-sage-blue h-full rounded-full transition-all duration-700 ease-out"
-                    style={{ width: `${Math.min(stats.totalExercises * 10, 100)}%` }}
-                  ></div>
-                </div>
-                <p className="text-sm text-charcoal/60 leading-relaxed">{stats.totalExercises} out of 10 completed</p>
-              </div>
-
-              <div className="p-6 bg-gradient-to-r from-coral/10 to-warm-green/10 rounded-3xl border border-coral/20 transition-all duration-300 hover:scale-[1.02]">
-                <div className="flex items-center justify-between mb-4">
-                  <p className="font-bold text-charcoal text-base">Maintain 85% accuracy</p>
-                  <span className="text-sm font-bold text-coral bg-coral/10 px-3 py-1 rounded-full">
-                    {stats.accuracyPercentage}%
-                  </span>
-                </div>
-                <div className="w-full bg-coral/10 rounded-full h-3 overflow-hidden mb-3">
-                  <div
-                    className="bg-gradient-to-r from-coral to-warm-green h-full rounded-full transition-all duration-700 ease-out"
-                    style={{ width: `${stats.accuracyPercentage}%` }}
-                  ></div>
-                </div>
-                <p className="text-sm text-charcoal/60 leading-relaxed">
-                  {stats.accuracyPercentage >= 85
-                    ? "Great job! Above target"
-                    : "Keep practicing to improve accuracy"
-                  }
-                </p>
-              </div>
-
-              <div className="p-6 bg-gradient-to-r from-sage-blue/10 to-coral/10 rounded-3xl border border-sage-blue/20 transition-all duration-300 hover:scale-[1.02]">
-                <h4 className="font-bold text-charcoal mb-3 flex items-center text-base">
-                  <span className="mr-3">💡</span>
-                  Learning Tip
-                </h4>
-                <p className="text-sm text-charcoal/70 leading-relaxed">
-                  {hasCompletedAssessment
-                    ? "Your adaptive algorithm is working! The difficulty adjusts based on your skill level for optimal learning."
-                    : "Complete your skill assessment to unlock personalized learning recommendations!"
-                  }
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-
+        {/* Call to Action */}
         {hasCompletedAssessment && (
-          <div className="bg-gradient-to-r from-coral/20 via-warm-green/20 to-sage-blue/20 rounded-3xl p-8 text-center border border-warm-green/30 shadow-soft">
-            <h3 className="text-3xl font-bold text-charcoal mb-6 text-balance">
-              Ready to Start Learning?
-            </h3>
-            <p className="text-lg text-charcoal/70 mb-8 max-w-3xl mx-auto leading-relaxed">
-              Your adaptive learning algorithm is ready to provide the perfect challenge level. Choose a subject and let&apos;s make today amazing!
+          <div className="bg-cream/95 rounded-3xl p-8 text-center shadow-soft border border-sage-blue/10">
+            <h3 className="text-3xl font-bold text-charcoal mb-3">Ready to Continue Learning?</h3>
+            <p className="text-base text-charcoal/60 mb-6 max-w-2xl mx-auto">
+              Your personalized learning path is ready. Pick up where you left off!
             </p>
-            <div className="flex flex-col sm:flex-row gap-6 justify-center">
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Button
                 onClick={() => (window.location.href = "/dashboard/learn")}
-                className="bg-coral hover:bg-coral/90 text-cream hover:-translate-y-1 transition-all"
+                className="bg-gradient-to-r from-coral to-warm-green hover:opacity-90 text-cream transition-all shadow-soft hover:shadow-lg rounded-2xl px-8 py-3 font-semibold hover:scale-[1.02] duration-300"
               >
                 📚 Start Learning
               </Button>
               <Button
                 variant="outline"
                 onClick={() => (window.location.href = "/dashboard/progress")}
-                className="border-sage-blue/20 text-charcoal hover:bg-sage-blue/5 hover:-translate-y-1 transition-all"
+                className="border-2 border-charcoal/20 text-charcoal hover:bg-charcoal/5 transition-all rounded-2xl px-8 py-3 font-semibold hover:scale-[1.02] duration-300"
               >
-                📊 View Progress
+                📊 View Details
               </Button>
             </div>
           </div>

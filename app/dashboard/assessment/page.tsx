@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
@@ -9,7 +9,7 @@ import { Progress } from '@/components/ui/progress'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Loader2 } from 'lucide-react'
 import { useBirthdateCheck } from '@/hooks/useBirthdateCheck'
-import { useEffect } from 'react'
+import { useCheckAchievements } from '@/components/gamification/AchievementProvider'
 
 type Subject = 'math' | 'english' | 'science'
 type Difficulty = 'easy' | 'medium' | 'hard'
@@ -63,6 +63,9 @@ export default function AssessmentPage() {
 
   // Hook must be called at the top level, before any conditional returns
   const { canAccess } = useBirthdateCheck({ user: userData, redirectTo: "/dashboard/assessment" })
+
+  // Achievement system
+  const { checkAchievements } = useCheckAchievements()
 
   // Fetch user data
   useEffect(() => {
@@ -255,7 +258,8 @@ export default function AssessmentPage() {
       })
 
       if (!response.ok) {
-        throw new Error('Failed to save assessment results')
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
+        throw new Error(`Failed to save assessment results: ${errorData.error || response.statusText}`)
       }
 
       // Calculate skill levels based on percentage (1-5 scale)
@@ -289,6 +293,12 @@ export default function AssessmentPage() {
       setAssessmentResults(calculatedResults)
       setSkillLevels(calculatedSkillLevels)
       setCurrentStep('results')
+
+      // Check for achievements after assessment completion
+      // Small delay to ensure results screen is rendered
+      setTimeout(() => {
+        checkAchievements()
+      }, 800)
     } catch (error) {
       console.error('Error finishing assessment:', error)
     }

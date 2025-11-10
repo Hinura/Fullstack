@@ -47,9 +47,42 @@ interface UserStats {
   completedAssessments: number
 }
 
+interface RecentAchievement {
+  unlocked_at: string
+  achievements: {
+    name: string
+    description: string
+    icon_name: string
+    points_reward: number
+  }
+}
+
+interface GamificationData {
+  totalPoints: number
+  overallLevel: number
+  streak: {
+    currentDays: number
+    highestDays: number
+    freezeAvailable: boolean
+  }
+  subjects: {
+    math: { level: number; points: number; pointsToNextLevel: number }
+    english: { level: number; points: number; pointsToNextLevel: number }
+    science: { level: number; points: number; pointsToNextLevel: number }
+  }
+  achievements: {
+    total: number
+    recent: RecentAchievement[]
+  }
+  recentActivity: {
+    xpLast7Days: number
+  }
+}
+
 interface DashboardData {
   user: UserProfile
   stats: UserStats
+  gamification?: GamificationData
 }
 
 export default function ProfilePage() {
@@ -457,63 +490,138 @@ export default function ProfilePage() {
                   <h3 className="text-2xl font-bold text-charcoal">At a Glance</h3>
                 </div>
 
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between p-4 bg-gradient-to-r from-coral/10 to-warm-green/10 rounded-2xl hover:shadow-md transition-all duration-200 hover:scale-[1.02]">
-                    <span className="text-charcoal/70 font-medium">Points</span>
-                    <span className="font-bold text-charcoal text-xl">{user.points}</span>
+                <div className="space-y-3">
+                  {/* Total XP */}
+                  <div className="group relative overflow-hidden p-4 bg-gradient-to-r from-coral/10 via-coral/5 to-warm-green/10 rounded-2xl hover:shadow-md transition-all duration-200 hover:scale-[1.02] border border-coral/10">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2">
+                        <div className="w-8 h-8 bg-coral/20 rounded-xl flex items-center justify-center">
+                          <Award className="w-4 h-4 text-coral" />
+                        </div>
+                        <span className="text-charcoal/70 font-semibold">Total XP</span>
+                      </div>
+                      <span className="font-bold text-charcoal text-xl">
+                        {userData.gamification?.totalPoints.toLocaleString() || user.points.toLocaleString()}
+                      </span>
+                    </div>
                   </div>
-                  <div className="flex items-center justify-between p-4 bg-gradient-to-r from-warm-green/10 to-sage-blue/10 rounded-2xl hover:shadow-md transition-all duration-200 hover:scale-[1.02]">
-                    <span className="text-charcoal/70 font-medium">Level</span>
-                    <span className="font-bold text-charcoal text-xl">{user.currentLevel}</span>
+
+                  {/* Overall Level */}
+                  <div className="group relative overflow-hidden p-4 bg-gradient-to-r from-warm-green/10 via-warm-green/5 to-sage-blue/10 rounded-2xl hover:shadow-md transition-all duration-200 hover:scale-[1.02] border border-warm-green/10">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2">
+                        <div className="w-8 h-8 bg-warm-green/20 rounded-xl flex items-center justify-center">
+                          <Trophy className="w-4 h-4 text-warm-green" />
+                        </div>
+                        <span className="text-charcoal/70 font-semibold">Overall Level</span>
+                      </div>
+                      <span className="font-bold text-charcoal text-xl">
+                        Level {userData.gamification?.overallLevel || user.currentLevel}
+                      </span>
+                    </div>
                   </div>
-                  <div className="flex items-center justify-between p-4 bg-gradient-to-r from-sage-blue/10 to-coral/10 rounded-2xl hover:shadow-md transition-all duration-200 hover:scale-[1.02]">
-                    <span className="text-charcoal/70 font-medium">Streak</span>
-                    <span className="font-bold text-charcoal text-xl">{user.streakDays} days</span>
+
+                  {/* Streak */}
+                  <div className="group relative overflow-hidden p-4 bg-gradient-to-r from-sage-blue/10 via-sage-blue/5 to-coral/10 rounded-2xl hover:shadow-md transition-all duration-200 hover:scale-[1.02] border border-sage-blue/10">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2">
+                        <div className="w-8 h-8 bg-sage-blue/20 rounded-xl flex items-center justify-center">
+                          <Zap className="w-4 h-4 text-sage-blue" />
+                        </div>
+                        <span className="text-charcoal/70 font-semibold">Streak</span>
+                      </div>
+                      <span className="font-bold text-charcoal text-xl">
+                        🔥 {userData.gamification?.streak.currentDays || user.streakDays} days
+                      </span>
+                    </div>
                   </div>
-                  <div className="flex items-center justify-between p-4 bg-gradient-to-r from-coral/10 to-warm-green/10 rounded-2xl hover:shadow-md transition-all duration-200 hover:scale-[1.02]">
-                    <span className="text-charcoal/70 font-medium">Assessments</span>
-                    <span className="font-bold text-charcoal text-xl">{stats.completedAssessments}</span>
+
+                  {/* Streak Freeze - Only show if available */}
+                  {userData.gamification?.streak.freezeAvailable && (
+                    <div className="group relative overflow-hidden p-4 bg-gradient-to-r from-sage-blue/10 via-sage-blue/5 to-coral/10 rounded-2xl hover:shadow-md transition-all duration-200 hover:scale-[1.02] border border-sage-blue/10">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-2">
+                          <div className="w-8 h-8 bg-sage-blue/20 rounded-xl flex items-center justify-center">
+                            <span className="text-base">❄️</span>
+                          </div>
+                          <span className="text-charcoal/70 font-semibold">Streak Freeze</span>
+                        </div>
+                        <span className="font-bold text-sage-blue text-xl">
+                          Available
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Total Achievements */}
+                  <div className="group relative overflow-hidden p-4 bg-gradient-to-r from-coral/10 via-coral/5 to-warm-green/10 rounded-2xl hover:shadow-md transition-all duration-200 hover:scale-[1.02] border border-coral/10">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2">
+                        <div className="w-8 h-8 bg-coral/20 rounded-xl flex items-center justify-center">
+                          <Trophy className="w-4 h-4 text-coral" />
+                        </div>
+                        <span className="text-charcoal/70 font-semibold">Achievements</span>
+                      </div>
+                      <span className="font-bold text-charcoal text-xl">
+                        🏆 {userData.gamification?.achievements.total || 0}
+                      </span>
+                    </div>
                   </div>
+
+                  {/* XP Last 7 Days - Only show if gamification exists */}
+                  {userData.gamification && userData.gamification.recentActivity.xpLast7Days > 0 && (
+                    <div className="group relative overflow-hidden p-4 bg-gradient-to-r from-warm-green/10 via-warm-green/5 to-sage-blue/10 rounded-2xl hover:shadow-md transition-all duration-200 hover:scale-[1.02] border border-warm-green/10">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-2">
+                          <div className="w-8 h-8 bg-warm-green/20 rounded-xl flex items-center justify-center">
+                            <Zap className="w-4 h-4 text-warm-green" />
+                          </div>
+                          <span className="text-charcoal/70 font-semibold">XP (Last 7 Days)</span>
+                        </div>
+                        <span className="font-bold text-warm-green text-xl">
+                          +{userData.gamification.recentActivity.xpLast7Days.toLocaleString()}
+                        </span>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
 
-            <Card className="rounded-3xl shadow-soft border-0 bg-cream/50 backdrop-blur-sm hover:shadow-lg transition-all duration-300">
-              <CardContent className="p-6">
-                <div className="flex items-center space-x-3 mb-6">
-                  <div className="w-10 h-10 bg-warm-green/20 rounded-2xl flex items-center justify-center">
-                    <Target className="w-5 h-5 text-warm-green" />
+            {userData.gamification && (
+              <Card className="rounded-3xl shadow-soft border-0 bg-cream/50 backdrop-blur-sm hover:shadow-lg transition-all duration-300">
+                <CardContent className="p-6">
+                  <div className="flex items-center space-x-3 mb-6">
+                    <div className="w-10 h-10 bg-warm-green/20 rounded-2xl flex items-center justify-center">
+                      <Target className="w-5 h-5 text-warm-green" />
+                    </div>
+                    <h3 className="text-2xl font-bold text-charcoal">Next Level</h3>
                   </div>
-                  <h3 className="text-2xl font-bold text-charcoal">Progress Goals</h3>
-                </div>
 
-                <div className="space-y-6">
-                  <div className="p-5 bg-warm-green/10 rounded-3xl border border-warm-green/20 hover:shadow-md transition-all duration-200">
-                    <p className="text-lg font-semibold text-charcoal mb-3">Daily Learning Goal</p>
-                    <div className="w-full bg-warm-green/20 rounded-full h-3 overflow-hidden">
+                  <div className="p-5 bg-gradient-to-br from-warm-green/10 via-sage-blue/10 to-coral/10 rounded-3xl border border-warm-green/20 hover:shadow-md transition-all duration-200">
+                    <div className="flex items-center justify-between mb-4">
+                      <p className="text-lg font-semibold text-charcoal">Overall Level {userData.gamification.overallLevel}</p>
+                      <span className="text-sm font-bold text-warm-green">{userData.gamification.totalPoints.toLocaleString()} XP</span>
+                    </div>
+                    <div className="w-full bg-warm-green/20 rounded-full h-4 overflow-hidden mb-3">
                       <div
-                        className="bg-gradient-to-r from-warm-green to-sage-blue rounded-full h-3 transition-all duration-500 ease-out"
-                        style={{ width: `${Math.min((stats.totalExercises % 10) * 10, 100)}%` }}
+                        className="bg-gradient-to-r from-warm-green via-sage-blue to-coral rounded-full h-4 transition-all duration-700 ease-out shadow-sm"
+                        style={{
+                          width: `${Math.min(
+                            ((userData.gamification.totalPoints - ((userData.gamification.overallLevel - 1) ** 2 * 100)) /
+                            ((userData.gamification.overallLevel ** 2 * 100) - ((userData.gamification.overallLevel - 1) ** 2 * 100))) * 100,
+                            100
+                          )}%`
+                        }}
                       ></div>
                     </div>
-                    <p className="text-sm text-charcoal/60 mt-2 font-medium">
-                      {stats.totalExercises % 10}/10 exercises today
+                    <p className="text-sm text-charcoal/70 font-semibold text-center">
+                      {((userData.gamification.overallLevel ** 2 * 100) - userData.gamification.totalPoints).toLocaleString()} XP to Level {userData.gamification.overallLevel + 1}
                     </p>
                   </div>
-
-                  <div className="p-5 bg-coral/10 rounded-3xl border border-coral/20 hover:shadow-md transition-all duration-200">
-                    <p className="text-lg font-semibold text-charcoal mb-3">Accuracy Target</p>
-                    <div className="w-full bg-coral/20 rounded-full h-3 overflow-hidden">
-                      <div
-                        className="bg-gradient-to-r from-coral to-warm-green rounded-full h-3 transition-all duration-500 ease-out"
-                        style={{ width: `${Math.min(stats.accuracyPercentage, 100)}%` }}
-                      ></div>
-                    </div>
-                    <p className="text-sm text-charcoal/60 mt-2 font-medium">{stats.accuracyPercentage}% accuracy</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            )}
           </div>
         </div>
       </main>

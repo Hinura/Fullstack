@@ -1,12 +1,13 @@
 "use client"
 
 import { useSearchParams, useRouter } from "next/navigation"
-import { useEffect, useState, Suspense } from "react"
+import { useEffect, useRef, useState, Suspense } from "react"
 import { Button } from "@/components/ui/button"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Loader2, CheckCircle2, XCircle, ArrowLeft } from "lucide-react"
 import DashboardNavigation from "@/components/DashboardNavigation"
 import { useBirthdateCheck } from "@/hooks/useBirthdateCheck"
+import { useCheckAchievements } from "@/components/gamification/AchievementProvider"
 
 interface Question {
   id: string
@@ -63,6 +64,57 @@ function PracticeContent() {
     message: string
     next_adjustment_in: number
   } | null>(null)
+
+  // AI: hint + explanation state
+  const [hint, setHint] = useState<string | null>(null)
+  const [hintLoading, setHintLoading] = useState(false)
+  const [explanation, setExplanation] = useState<string | null>(null)
+  const [explanationLoading, setExplanationLoading] = useState(false)
+
+  // Achievement system
+  const { checkAchievements } = useCheckAchievements()
+
+  // reset per-question UI state on index change
+  useEffect(() => {
+    setHint(null)
+    setExplanation(null)
+    setShowFeedback(false)
+  }, [quizState.currentQuestion])
+
+  // Check for achievements when quiz is completed
+  useEffect(() => {
+    if (quizState.isComplete) {
+      // Small delay to ensure the results screen is rendered first
+      const timer = setTimeout(() => {
+        checkAchievements()
+      }, 800)
+
+      return () => clearTimeout(timer)
+    }
+  }, [quizState.isComplete, checkAchievements])
+
+  function nextQuestion() {
+    if (quizState.currentQuestion < questions.length - 1) {
+      setQuizState(prev => ({
+        ...prev,
+        currentQuestion: prev.currentQuestion + 1
+      }))
+      setShowFeedback(false)
+    } else {
+      // Calculate final score
+      const score = quizState.selectedAnswers.reduce((acc, answer, idx) => {
+        return acc + (answer === questions[idx].answer ? 1 : 0)
+      }, 0)
+
+      // Calculate time spent
+      const timeSpentSeconds = Math.floor((Date.now() - startTime) / 1000)
+
+      // Save quiz attempt to database
+      saveQuizAttempt(score, timeSpentSeconds)
+
+      setQuizState(prev => ({ ...prev, score, isComplete: true }))
+    }
+  }
 
   // Hook must be called at the top level, before any conditional returns
   const { canAccess } = useBirthdateCheck({ user: userData, redirectTo: "/dashboard/practice" })
@@ -134,48 +186,95 @@ function PracticeContent() {
         })
       })
 
-      if (response.ok) {
-        const data = await response.json()
-        // Store EDL update info if available
-        if (data.data?.edl_update) {
-          setEdlUpdate(data.data.edl_update)
-        }
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
+        throw new Error(`Failed to save quiz: ${errorData.error || response.statusText}`)
+      }
+
+      const data = await response.json()
+
+      // Store EDL update info if available
+      if (data.data?.edl_update) {
+        setEdlUpdate(data.data.edl_update)
       }
     } catch (error) {
-      console.error('Error saving quiz attempt:', error)
+      // Don't prevent the quiz from completing, just log the error silently
     }
   }
 
-  const handleNext = () => {
-    setShowFeedback(true)
+  // === AI: getHint ===
+  async function getHint() {
+    const currentQ = questions[quizState.currentQuestion]
+    if (!currentQ) return
+    setHintLoading(true)
+    setHint(null)
+    try {
+      const res = await fetch("/api/ai/hint", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          subject: currentQ.subject,
+          age: userData?.age ?? null,
+          difficulty: currentQ.difficulty,
+          question: currentQ.question,
+          options: [currentQ.option_a, currentQ.option_b, currentQ.option_c, currentQ.option_d],
+        }),
+      })
+      const data = await res.json()
+      if (res.ok) setHint(data?.data?.hint ?? "No hint available.")
+    } catch (e) {
+      console.error("Error fetching hint:", e)
+      setHint("Unable to load hint.")
+    } finally {
+      setHintLoading(false)
+    }
+  }
 
-    setTimeout(() => {
-      if (quizState.currentQuestion < questions.length - 1) {
-        setQuizState(prev => ({
-          ...prev,
-          currentQuestion: prev.currentQuestion + 1
-        }))
-        setShowFeedback(false)
-      } else {
-        // Calculate final score
-        const score = quizState.selectedAnswers.reduce((acc, answer, idx) => {
-          return acc + (answer === questions[idx].answer ? 1 : 0)
-        }, 0)
-
-        // Calculate time spent
-        const timeSpentSeconds = Math.floor((Date.now() - startTime) / 1000)
-
-        // Save quiz attempt to database
-        saveQuizAttempt(score, timeSpentSeconds)
-
-        setQuizState(prev => ({ ...prev, score, isComplete: true }))
-      }
-    }, 1500)
+  // === AI: getExplanation ===
+  async function getExplanation() {
+    const currentQ = questions[quizState.currentQuestion]
+    const userAnswer = quizState.selectedAnswers[quizState.currentQuestion]
+    if (!currentQ) return
+    setExplanationLoading(true)
+    setExplanation(null)
+    try {
+      const res = await fetch("/api/ai/explain", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          subject: currentQ.subject,
+          age: userData?.age ?? null,
+          question: currentQ.question,
+          options: [currentQ.option_a, currentQ.option_b, currentQ.option_c, currentQ.option_d],
+          correctAnswer: currentQ.answer,
+          userAnswer,
+        }),
+      })
+      const data = await res.json()
+      if (res.ok) setExplanation(data?.data?.explanation ?? "No explanation available.")
+    } catch (e) {
+      console.error("Error fetching explanation:", e)
+      setExplanation("Unable to load explanation.")
+    } finally {
+      setExplanationLoading(false)
+    }
   }
 
   const currentQ = questions[quizState.currentQuestion]
   const selectedAnswer = quizState.selectedAnswers[quizState.currentQuestion]
   const isCorrect = selectedAnswer === currentQ?.answer
+
+  const handleNext = () => {
+    setShowFeedback(true)
+
+    if (isCorrect) {
+      // short pause for a correct answer
+      setTimeout(() => {
+        nextQuestion()
+      }, 1000)
+    }
+    // For incorrect answers, just show feedback - user must click "Why?" to proceed
+  }
 
   const getSubjectColor = (subject: string) => {
     switch (subject) {
@@ -415,20 +514,48 @@ function PracticeContent() {
               )
             })}
           </div>
+          {/* AI Hint */}
+          <div className="mt-8 space-y-3">
+            <Button
+              onClick={getHint}
+              disabled={hintLoading || showFeedback}
+              className="bg-gradient-to-r from-warm-green to-warm-green/80 text-cream hover:from-warm-green/90 hover:to-warm-green/70 font-semibold px-6 py-3 rounded-xl transition-all duration-300 disabled:opacity-60 shadow-md hover:shadow-lg"
+            >
+              {hintLoading ? (
+                <>
+                  <Loader2 className="animate-spin h-4 w-4 mr-2" />
+                  Thinking...
+                </>
+              ) : (
+                <>
+                  💡 Need a Hint?
+                </>
+              )}
+            </Button>
+
+            {hint && (
+              <div className="bg-warm-green/10 px-5 py-4 rounded-xl border-2 border-warm-green/20">
+                <p className="text-charcoal/80 leading-relaxed">
+                  <span className="font-semibold text-warm-green">Hint: </span>
+                  {hint}
+                </p>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Feedback Message */}
         {showFeedback && (
           <Alert className={`mb-6 border-2 ${isCorrect ? 'border-warm-green/30 bg-warm-green/10' : 'border-coral/30 bg-coral/10'}`}>
             <AlertDescription className={isCorrect ? 'text-warm-green' : 'text-coral'}>
-              <div className="flex items-center space-x-3">
-                <span className="text-2xl">{isCorrect ? '✅' : '❌'}</span>
+              <div className="flex items-center space-x-4 py-2">
+                <span className="text-3xl">{isCorrect ? '✅' : '❌'}</span>
                 <div>
-                  <p className="font-bold">
-                    {isCorrect ? 'Correct!' : 'Not quite right'}
+                  <p className="font-bold text-lg">
+                    {isCorrect ? 'Correct! Well done!' : 'Not quite right'}
                   </p>
                   {!isCorrect && (
-                    <p className="text-sm">The correct answer is: {currentQ.answer}</p>
+                    <p className="text-base mt-1">The correct answer is: <span className="font-bold">{currentQ.answer}</span></p>
                   )}
                 </div>
               </div>
@@ -436,14 +563,77 @@ function PracticeContent() {
           </Alert>
         )}
 
-        {/* Next Button */}
-        <Button
-          onClick={handleNext}
-          disabled={!selectedAnswer || showFeedback}
-          className={`w-full bg-gradient-to-r from-${subjectInfo.bg} to-${subjectInfo.bg}/70 text-cream text-lg py-6 rounded-xl font-bold disabled:opacity-50 disabled:cursor-not-allowed`}
-        >
-          {quizState.currentQuestion === questions.length - 1 ? 'See Results' : 'Next Question'}
-        </Button>
+        {/* When incorrect, encourage learning but allow skipping */}
+        {showFeedback && !isCorrect && (
+          <div className="mb-6 space-y-4">
+            {!explanation && !explanationLoading && (
+              <div className="space-y-3">
+                <div className="bg-gradient-to-r from-sage-blue/10 to-warm-green/10 rounded-2xl p-6 border-2 border-sage-blue/20">
+                  <p className="text-charcoal/80 text-center mb-4 font-medium">
+                    📚 Want to understand why this answer is correct?
+                  </p>
+                  <Button
+                    onClick={getExplanation}
+                    className="w-full bg-gradient-to-r from-sage-blue to-sage-blue/80 text-cream hover:from-sage-blue/90 hover:to-sage-blue/70 font-bold text-lg py-6 rounded-xl transition-all duration-300 shadow-md hover:shadow-lg"
+                  >
+                    🧠 Show Me Why
+                  </Button>
+                </div>
+
+                <div className="flex justify-center">
+                  <Button
+                    onClick={nextQuestion}
+                    variant="outline"
+                    className="text-charcoal/60 hover:text-charcoal border-charcoal/20 hover:border-charcoal/40 px-6 py-3 rounded-xl font-medium transition-all duration-300"
+                  >
+                    {quizState.currentQuestion === questions.length - 1 ? 'See Results →' : 'Skip to Next Question →'}
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {explanationLoading && (
+              <div className="bg-sage-blue/10 rounded-2xl p-8 border-2 border-sage-blue/20 flex items-center justify-center">
+                <Loader2 className="animate-spin h-6 w-6 mr-3 text-sage-blue" />
+                <span className="text-charcoal/70 font-medium">Preparing explanation...</span>
+              </div>
+            )}
+
+            {explanation && (
+              <div className="space-y-4">
+                <div className="bg-gradient-to-r from-sage-blue/10 to-warm-green/10 rounded-2xl p-6 border-2 border-sage-blue/20">
+                  <h3 className="text-lg font-bold text-charcoal mb-3 flex items-center">
+                    <span className="text-2xl mr-2">💡</span>
+                    Here&apos;s why:
+                  </h3>
+                  <p className="text-charcoal/80 leading-relaxed whitespace-pre-wrap">
+                    {explanation}
+                  </p>
+                </div>
+
+                <div className="flex justify-center">
+                  <Button
+                    onClick={nextQuestion}
+                    className={`bg-gradient-to-r from-${subjectInfo.bg} to-${subjectInfo.bg}/70 text-cream text-lg px-8 py-6 rounded-xl font-bold hover:scale-105 transition-all duration-300`}
+                  >
+                    {quizState.currentQuestion === questions.length - 1 ? 'See Results' : 'Next Question →'}
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Next Button - only show before feedback or for correct answers */}
+        {!(showFeedback && !isCorrect) && (
+          <Button
+            onClick={handleNext}
+            disabled={!selectedAnswer || showFeedback}
+            className={`w-full bg-gradient-to-r from-${subjectInfo.bg} to-${subjectInfo.bg}/70 text-cream text-lg py-6 rounded-xl font-bold disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300`}
+          >
+            {quizState.currentQuestion === questions.length - 1 ? 'See Results' : 'Check Answer'}
+          </Button>
+        )}
       </div>
     </div>
   )
