@@ -247,7 +247,7 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000
 - id: UUID (references auth.users)
 - username: TEXT
 - full_name: TEXT
-- age_group: ENUM ('7-9', '10-12', '13-15', '16-18')
+- age: ENUM ('7-9', '10-12', '13-15', '16-18')
 - points: INTEGER
 - current_level: INTEGER
 - streak_days: INTEGER
@@ -304,7 +304,7 @@ Run this SQL in Supabase SQL Editor:
 {
   email: string
   password: string
-  age_group: '7-9' | '10-12' | '13-15' | '16-18'
+  age: '7 - 18'
 }
 
 // Response

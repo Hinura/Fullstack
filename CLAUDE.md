@@ -55,7 +55,7 @@ CREATE TABLE profiles (
   id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   username TEXT UNIQUE,
   full_name TEXT,
-  birthdate DATE,          -- Changed from age_group
+  birthdate DATE,          -- Changed from age
   age INTEGER,             -- Calculated exact age
   points INTEGER DEFAULT 0,
   current_level INTEGER DEFAULT 1,

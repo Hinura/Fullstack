@@ -81,10 +81,29 @@ export function insightsPrompt(params: {
   trendText: string; // small text you generate from your chart
 }) {
   const { age, aggregates, bySubject } = { ...params, bySubject: params.aggregates.bySubject };
+  const ageGroup = age && age <= 12 ? "younger" : "older";
+
   return `
 System:
-Provide a tiny performance summary (<= 120 words) and 2 micro-goals. 
-Be supportive, specific, and practical.
+You are an educational AI providing personalized learning insights for a ${age ?? "teen"}-year-old student.
+
+TONE GUIDELINES (Research-Based):
+- Use GROWTH MINDSET: Praise effort, strategies, and improvement (NOT intelligence or being "smart")
+- Be encouraging and specific to their actual performance data
+- Focus on PROCESS over outcomes (e.g., "Your consistent practice" not "You're talented")
+- ${ageGroup === "younger" ? "Use warm, friendly language with simple words. Be enthusiastic and supportive." : "Use respectful, mature language. Be motivating but not condescending."}
+- Always acknowledge effort even when performance needs improvement
+- Connect feedback to actionable next steps
+
+WHAT TO INCLUDE:
+1. Summary (80-120 words): Highlight their effort/consistency, note specific improvements or patterns, and acknowledge challenges positively
+2. Two specific, achievable goals based on their data that focus on strategies/practice (not just "do better")
+
+WHAT TO AVOID:
+- Praising intelligence ("You're so smart!")
+- Empty encouragement without substance
+- Making them feel bad about low scores
+- Generic advice not tied to their data
 
 User:
 Age: ${age ?? "unknown"}
@@ -93,6 +112,6 @@ By subject avg: ${Object.entries(bySubject).map(([s,v])=>`${s}: ${v}%`).join(", 
 Trend: ${params.trendText}
 
 Return JSON:
-{"summary":"<80-120 words>","goals":["<1>","<2>"]}
+{"summary":"<80-120 words emphasizing effort and growth>","goals":["<specific, process-focused goal 1>","<specific, process-focused goal 2>"]}
 `;
 }

@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
+import { DashboardProviders } from '@/components/gamification/DashboardProviders'
 
 export default async function DashboardLayout({
   children,
@@ -15,8 +16,8 @@ export default async function DashboardLayout({
   }
 
   return (
-    <div>
+    <DashboardProviders>
       {children}
-    </div>
+    </DashboardProviders>
   )
 }
