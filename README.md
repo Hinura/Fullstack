@@ -803,6 +803,7 @@ The project uses three separate Supabase client configurations:
 
 ## 📁 Project Structure
 
+```
 hinura/
 ├── app/
 │   ├── (auth)/
@@ -859,6 +860,7 @@ hinura/
 ├── package.json
 ├── tailwind.config.ts
 └── tsconfig.json
+```
 
 ## 🚀 Getting Started
 
