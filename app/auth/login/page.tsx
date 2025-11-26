@@ -51,7 +51,7 @@ function SignInContent() {
         // Wait for cookies to be set properly in production
         await new Promise(resolve => setTimeout(resolve, 1000))
         // Use replace to prevent back button issues
-        window.location.replace('/dashboard/learn')
+        window.location.replace('/dashboard')
         // Keep loading state true during redirect
       }
     } catch {
