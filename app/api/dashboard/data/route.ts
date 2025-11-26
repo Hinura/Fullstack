@@ -91,10 +91,10 @@ export async function GET() {
       let skillLevel = 1
 
       // Convert percentage to skill level (1-5) - same logic as assessment page
-      if (percentage >= 85) skillLevel = 5
-      else if (percentage >= 70) skillLevel = 4
-      else if (percentage >= 55) skillLevel = 3
-      else if (percentage >= 40) skillLevel = 2
+      if (percentage >= 90) skillLevel = 5
+      else if (percentage >= 76) skillLevel = 4
+      else if (percentage >= 60) skillLevel = 3
+      else if (percentage >= 50) skillLevel = 2
       else skillLevel = 1
 
       skillLevelsBySubject[attempt.subject] = {
