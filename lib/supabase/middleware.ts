@@ -79,7 +79,7 @@ export async function updateSession(request: NextRequest) {
 
   // Redirect authenticated users away from auth pages
   if (request.nextUrl.pathname.startsWith('/auth') && user) {
-    const redirectUrl = new URL('/dashboard/learn', request.url)
+    const redirectUrl = new URL('/dashboard', request.url)
     return NextResponse.redirect(redirectUrl)
   }
 
