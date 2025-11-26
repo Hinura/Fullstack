@@ -8,11 +8,11 @@ export type Difficulty = 'easy' | 'medium' | 'hard' | 'adaptive';
 export type PerformanceAdjustment = -2 | -1 | 0 | 1 | 2;
 
 export type EDLStatus =
-  | 'exceptional'        // ≥90% accuracy
-  | 'approaching_mastery' // 85-89% accuracy
-  | 'flow_zone'          // 60-84% accuracy (optimal)
-  | 'challenging'        // 50-59% accuracy
-  | 'struggling';        // <50% accuracy
+  | 'exceptional'
+  | 'approaching_mastery'
+  | 'flow_zone'
+  | 'challenging'
+  | 'struggling';
 
 export type AdjustmentType = 'level_up' | 'level_down' | null;
 

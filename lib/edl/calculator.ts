@@ -19,7 +19,7 @@ export function getEDLStatus(accuracy: number | null): EDLStatus {
   if (accuracy === null) return 'flow_zone'; // Default for new users
 
   if (accuracy >= 90) return 'exceptional';
-  if (accuracy >= 85) return 'approaching_mastery';
+  if (accuracy >= 76) return 'approaching_mastery';
   if (accuracy >= 60) return 'flow_zone';
   if (accuracy >= 50) return 'challenging';
   return 'struggling';

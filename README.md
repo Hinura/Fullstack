@@ -1753,14 +1753,6 @@ pnpm build
 localStorage.setItem('debug', 'true')
 ```
 
-## 📝 Contributing
-
-1. Follow the code style guide
-2. Write tests for new features
-3. Update documentation
-4. Create detailed PR descriptions
-5. Request review from team members
-
 ## 📄 License
 
 This project is part of an academic thesis and is not licensed for commercial use.
@@ -1774,10 +1766,6 @@ This project is part of an academic thesis and is not licensed for commercial us
 - [Supabase Documentation](https://supabase.com/docs)
 - [shadcn/ui Components](https://ui.shadcn.com)
 - [Tailwind CSS](https://tailwindcss.com/docs)
-
-### Contact
-- Project Supervisor: [supervisor@university.edu]
-- Team Email: [team@university.edu]
 
 ---
 
@@ -1816,29 +1804,3 @@ const [showPassword, setShowPassword] = useState(false)
 - Email confirmation is mandatory for all registrations
 - Profile creation happens automatically via database triggers
 - Use appropriate Supabase client for component type (client/server/middleware)
-
----
-
-**Last Updated**: November 2024
-**Version**: 1.0.0
-**Status**: In Development
-
----
-
-## 📊 Documentation Completeness
-
-This comprehensive README includes:
-- ✅ Complete project overview with problem statement and solution
-- ✅ Detailed gamification system (12 achievements, points, streaks, levels)
-- ✅ AI integration documentation (4 OpenAI-powered features)
-- ✅ Exercise system and EDL adaptive algorithm
-- ✅ Complete architecture (Supabase clients, auth flow, RLS)
-- ✅ Full API documentation (11 endpoints with examples)
-- ✅ Complete database schema (9 tables + functions + RLS policies)
-- ✅ Environment variable reference
-- ✅ Setup and development instructions
-- ✅ Research foundation and academic references
-- ✅ Timeline and milestones
-- ✅ Troubleshooting guide
-
-**Total Documentation**: 1,840+ lines covering all aspects of the Hinura platform for your Bachelor's thesis in Software Engineering.

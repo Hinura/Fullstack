@@ -113,10 +113,10 @@ export default function AssessmentPage() {
             }
 
             // Convert percentage to skill level (1-5)
-            if (percentage >= 85) existingSkillLevels[subject] = 5
-            else if (percentage >= 70) existingSkillLevels[subject] = 4
-            else if (percentage >= 55) existingSkillLevels[subject] = 3
-            else if (percentage >= 40) existingSkillLevels[subject] = 2
+            if (percentage >= 90) existingSkillLevels[subject] = 5
+            else if (percentage >= 76) existingSkillLevels[subject] = 4
+            else if (percentage >= 60) existingSkillLevels[subject] = 3
+            else if (percentage >= 50) existingSkillLevels[subject] = 2
             else existingSkillLevels[subject] = 1
           })
 
@@ -282,10 +282,10 @@ export default function AssessmentPage() {
           }
 
           // Convert percentage to skill level (1-5)
-          if (percentage >= 85) calculatedSkillLevels[subject] = 5
-          else if (percentage >= 70) calculatedSkillLevels[subject] = 4
-          else if (percentage >= 55) calculatedSkillLevels[subject] = 3
-          else if (percentage >= 40) calculatedSkillLevels[subject] = 2
+          if (percentage >= 90) calculatedSkillLevels[subject] = 5
+          else if (percentage >= 76) calculatedSkillLevels[subject] = 4
+          else if (percentage >= 60) calculatedSkillLevels[subject] = 3
+          else if (percentage >= 50) calculatedSkillLevels[subject] = 2
           else calculatedSkillLevels[subject] = 1
         }
       })
