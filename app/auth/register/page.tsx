@@ -103,7 +103,7 @@ export default function RegisterPage() {
 
         // Profile is automatically created by database trigger
         // Redirect to dashboard after successful signup
-        router.push('/dashboard/learn')
+        router.push('/dashboard')
       }
     } catch {
       setError('An unexpected error occurred')
