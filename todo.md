@@ -1,7 +1,7 @@
 # Hinura Development - Completed Work
 
 **Thesis Project**: AI-driven gamified learning platform for students aged 7-18
-**Duration**: September 9 - December 1, 2024 (12 weeks)
+**Duration**: September 9 - November 28, 2025 (12 weeks)
 **Team Size**: 2 members
 
 ---
