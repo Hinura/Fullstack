@@ -31,7 +31,7 @@ An adaptive educational platform for learners aged 7-18, implementing research-b
 ## 🎯 Overview
 
 **Thesis Project** - Bachelor's Degree in Software Engineering  
-**Duration**: September 9 - December 1, 2024 (12 weeks)  
+**Duration**: September 9 - November 28, 2025 (12 weeks)  
 **Team Size**: 2 members
 
 ### Problem Statement
