@@ -2,7 +2,6 @@
 // Question selection logic for EDL system
 
 import type {
-  Subject,
   Difficulty,
   UserPerformanceMetrics,
   DifficultyDistribution,

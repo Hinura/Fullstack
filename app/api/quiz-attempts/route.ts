@@ -1,20 +1,13 @@
-import { createClient } from '@/lib/supabase/server'
-import { NextResponse } from 'next/server'
+import { NextResponse, NextRequest } from 'next/server'
+import { requireAuth } from '@/lib/api-middleware'
+import { logger } from '@/lib/logger'
 
 // POST - Save quiz attempt
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient()
-
-    // Get authenticated user
-    const { data: { user }, error: userError } = await supabase.auth.getUser()
-
-    if (userError || !user) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      )
-    }
+    const auth = await requireAuth(request)
+    if (auth.error) return auth.error
+    const { user, supabase } = auth
 
     // Parse request body
     const body = await request.json()
@@ -94,7 +87,7 @@ export async function POST(request: Request) {
         multipliers = awardData.multipliers || multipliers
       }
     } catch (error) {
-      console.error('Error awarding points:', error)
+      logger.error('Failed to award points', error, { userId: user.id, subject, difficulty })
       // Continue with base points if API fails
     }
 
@@ -117,7 +110,7 @@ export async function POST(request: Request) {
       .single()
 
     if (attemptError) {
-      console.error('Error saving quiz attempt:', attemptError)
+      logger.error('Failed to save quiz attempt', attemptError, { userId: user.id, subject })
       return NextResponse.json(
         { error: 'Failed to save quiz attempt' },
         { status: 500 }
@@ -196,7 +189,7 @@ export async function POST(request: Request) {
         }
       }
     } catch (error) {
-      console.error('Error updating subject levels:', error)
+      logger.error('Failed to update subject levels', error, { userId: user.id, subject })
       // Don't fail the whole request
     }
 
@@ -222,7 +215,7 @@ export async function POST(request: Request) {
         }
       }
     } catch (error) {
-      console.error('Error updating streak:', error)
+      logger.error('Failed to update streak', error, { userId: user.id })
       // Don't fail the whole request
     }
 
@@ -238,7 +231,7 @@ export async function POST(request: Request) {
         })
 
       if (edlError) {
-        console.error('Error updating EDL:', edlError)
+        logger.error('Failed to update EDL', edlError, { userId: user.id, subject })
         // Don't fail the whole request, just log the error
         // The quiz was still saved
       } else {
@@ -268,7 +261,7 @@ export async function POST(request: Request) {
         }
       }
     } catch (error) {
-      console.error('Error checking achievements:', error)
+      logger.error('Failed to check achievements', error, { userId: user.id })
       // Don't fail the whole request
     }
 
@@ -352,7 +345,7 @@ export async function POST(request: Request) {
           }
         }
       } catch (error) {
-        console.error('Error checking perfect score achievement:', error)
+        logger.error('Failed to check perfect score achievement', error, { userId: user.id })
         // Don't fail the whole request
       }
     }
@@ -463,7 +456,7 @@ export async function POST(request: Request) {
     return NextResponse.json(response)
 
   } catch (error) {
-    console.error('Error in quiz-attempts:', error)
+    logger.error('Quiz attempt creation failed', error, { path: '/api/quiz-attempts' })
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -472,14 +465,11 @@ export async function POST(request: Request) {
 }
 
 // GET - Fetch user's quiz attempts
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const auth = await requireAuth(request)
+    if (auth.error) return auth.error
+    const { user, supabase } = auth
 
     const { data: attempts, error } = await supabase
       .from('quiz_attempts')
@@ -488,13 +478,13 @@ export async function GET() {
       .order('completed_at', { ascending: false })
 
     if (error) {
-      console.error('Error fetching quiz attempts:', error)
+      logger.error('Failed to fetch quiz attempts', error, { userId: user.id })
       return NextResponse.json({ error: 'Failed to fetch quiz attempts' }, { status: 500 })
     }
 
     return NextResponse.json({ attempts })
   } catch (error) {
-    console.error('Error in quiz-attempts GET:', error)
+    logger.error('Quiz attempts fetch failed', error, { path: '/api/quiz-attempts' })
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

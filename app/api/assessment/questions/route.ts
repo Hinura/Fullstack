@@ -1,14 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { requireAuth } from '@/lib/api-middleware'
+import { ASSESSMENT_CONFIG } from '@/lib/constants/game-config'
+import { shuffleArray } from '@/lib/utils/array'
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createClient()
-    const { data: { user }, error: userError } = await supabase.auth.getUser()
-
-    if (userError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const auth = await requireAuth(request)
+    if (auth.error) return auth.error
+    const { user, supabase } = auth
 
     const { searchParams } = new URL(request.url)
     const subject = searchParams.get('subject')
@@ -27,14 +26,14 @@ export async function GET(request: NextRequest) {
 
     const userAge = profile?.age || 10
 
-    // Get questions for the subject (2 easy, 3 medium, 2 hard = 7 questions per subject)
+    // Get questions for the subject using configured distribution
     const { data: easyQuestions, error: easyError } = await supabase
       .from('questions')
       .select('*')
       .eq('subject', subject)
       .eq('age', userAge)
       .eq('difficulty', 'easy')
-      .limit(2)
+      .limit(ASSESSMENT_CONFIG.QUESTION_DISTRIBUTION.EASY)
 
     const { data: mediumQuestions, error: mediumError } = await supabase
       .from('questions')
@@ -42,7 +41,7 @@ export async function GET(request: NextRequest) {
       .eq('subject', subject)
       .eq('age', userAge)
       .eq('difficulty', 'medium')
-      .limit(3)
+      .limit(ASSESSMENT_CONFIG.QUESTION_DISTRIBUTION.MEDIUM)
 
     const { data: hardQuestions, error: hardError } = await supabase
       .from('questions')
@@ -50,7 +49,7 @@ export async function GET(request: NextRequest) {
       .eq('subject', subject)
       .eq('age', userAge)
       .eq('difficulty', 'hard')
-      .limit(2)
+      .limit(ASSESSMENT_CONFIG.QUESTION_DISTRIBUTION.HARD)
 
     if (easyError || mediumError || hardError) {
       console.error('Database error:', { easyError, mediumError, hardError })
@@ -63,8 +62,8 @@ export async function GET(request: NextRequest) {
       ...(hardQuestions || [])
     ]
 
-    // Shuffle questions to randomize order
-    const shuffledQuestions = allQuestions.sort(() => Math.random() - 0.5)
+    // Shuffle questions to randomize order using Fisher-Yates algorithm
+    const shuffledQuestions = shuffleArray(allQuestions)
 
     return NextResponse.json({ questions: shuffledQuestions })
   } catch (error) {

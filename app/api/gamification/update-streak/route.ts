@@ -1,14 +1,12 @@
-import { createClient } from '@/lib/supabase/server'
-import { NextResponse } from 'next/server'
+import { NextResponse, NextRequest } from 'next/server'
+import { requireAuth } from '@/lib/api-middleware'
+import { STREAK_CONFIG } from '@/lib/constants/game-config'
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient()
-
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const auth = await requireAuth(request)
+    if (auth.error) return auth.error
+    const { user, supabase } = auth
 
     // Call database function to update streak
     const { data, error } = await supabase
@@ -21,16 +19,9 @@ export async function POST(request: Request) {
 
     const streakResult = data[0]
 
-    // Check for streak milestones
-    const milestones = [3, 7, 14, 30, 60, 100]
-    const bonusPoints: Record<number, number> = {
-      3: 75,
-      7: 150,
-      14: 300,
-      30: 500,
-      60: 750,
-      100: 1500
-    }
+    // Use centralized streak configuration
+    const milestones = STREAK_CONFIG.MILESTONES
+    const bonusPoints = STREAK_CONFIG.BONUS_POINTS
 
     let milestoneReached = null
 
@@ -53,7 +44,7 @@ export async function POST(request: Request) {
           })
 
         // Award bonus points
-        const bonus = bonusPoints[streakResult.new_streak]
+        const bonus = bonusPoints[streakResult.new_streak as keyof typeof bonusPoints]
         const url = new URL(request.url)
         const baseUrl = `${url.protocol}//${url.host}`
 

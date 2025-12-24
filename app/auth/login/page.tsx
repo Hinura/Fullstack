@@ -2,16 +2,16 @@
 
 import { useState, Suspense } from 'react'
 import Link from 'next/link'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Loader2 } from 'lucide-react'
+import { AUTH_REDIRECTS } from '@/lib/auth-config'
 
 function SignInContent() {
-  const router = useRouter()
   const searchParams = useSearchParams()
   const [isLoading, setIsLoading] = useState(false)
   const [isGoogleLoading, setIsGoogleLoading] = useState(false)
@@ -51,7 +51,7 @@ function SignInContent() {
         // Wait for cookies to be set properly in production
         await new Promise(resolve => setTimeout(resolve, 1000))
         // Use replace to prevent back button issues
-        window.location.replace('/dashboard')
+        window.location.replace(AUTH_REDIRECTS.DEFAULT_AUTH_SUCCESS)
         // Keep loading state true during redirect
       }
     } catch {
@@ -84,21 +84,12 @@ function SignInContent() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-cream via-sage-blue/5 to-coral/5">
-      <header className="border-b border-sage-blue/20 bg-cream/95 backdrop-blur-md shadow-sm">
-        <div className="container mx-auto px-4 py-6">
-          <div className="flex items-center justify-between">
-            <Link
-              href="/"
-              className="flex items-center space-x-3 text-charcoal/70 hover:text-coral transition-colors duration-300 rounded-full px-4 py-2 hover:bg-coral/10"
-            >
-              <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" />
-              </svg>
-              <span className="text-base font-medium">Back to home</span>
-            </Link>
-            <Link href="/" className="flex items-center space-x-3">
-              <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-coral to-sage-blue flex items-center justify-center shadow-lg">
-                <svg className="h-6 w-6 text-cream" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <header className="border-b border-sage-blue/20 bg-cream/95 backdrop-blur supports-[backdrop-filter]:bg-cream/80">
+        <div className="container mx-auto px-6 lg:px-8">
+          <div className="flex h-20 items-center justify-between">
+            <Link href="/" className="flex items-center space-x-3 flex-shrink-0">
+              <div className="w-12 h-12 rounded-3xl bg-gradient-to-br from-coral to-sage-blue flex items-center justify-center shadow-lg">
+                <svg className="h-7 w-7 text-cream" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path
                     strokeLinecap="round"
                     strokeLinejoin="round"
@@ -107,7 +98,17 @@ function SignInContent() {
                   />
                 </svg>
               </div>
-              <span className="text-2xl font-bold text-charcoal font-rounded">Hinura</span>
+              <span className="font-bold text-2xl text-charcoal">Hinura</span>
+            </Link>
+
+            <Link
+              href="/"
+              className="inline-flex items-center gap-2 text-charcoal/70 hover:text-coral transition-colors duration-300 rounded-full px-4 py-2 hover:bg-coral/10"
+            >
+              <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" />
+              </svg>
+              <span className="font-medium text-base">Back to Home</span>
             </Link>
           </div>
         </div>

@@ -2,6 +2,7 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 import { cookies } from 'next/headers'
+import { AUTH_ROUTES, AUTH_REDIRECTS } from '@/lib/auth-config'
 
 export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url)
@@ -15,7 +16,7 @@ export async function GET(request: NextRequest) {
     const errorMessage = error === 'access_denied'
       ? 'Access was denied. Please try again.'
       : 'Authentication failed. Please try again.'
-    return NextResponse.redirect(new URL(`/auth/login?error=${encodeURIComponent(errorMessage)}`, requestUrl.origin))
+    return NextResponse.redirect(new URL(`${AUTH_ROUTES.LOGIN}?error=${encodeURIComponent(errorMessage)}`, requestUrl.origin))
   }
 
   if (code) {
@@ -55,7 +56,7 @@ export async function GET(request: NextRequest) {
 
       if (exchangeError) {
         console.error('Auth callback exchange error:', exchangeError)
-        return NextResponse.redirect(new URL('/auth/login?error=Email verification failed', requestUrl.origin))
+        return NextResponse.redirect(new URL(`${AUTH_ROUTES.LOGIN}?error=Email verification failed`, requestUrl.origin))
       }
 
       // Check if this is a new user (first time confirming email)
@@ -84,30 +85,30 @@ export async function GET(request: NextRequest) {
       }
 
       // Redirect logic based on user status
-      let redirectUrl = '/dashboard'
+      let redirectUrl: string = AUTH_REDIRECTS.DEFAULT_AUTH_SUCCESS
 
       if (isNewUser && !hasCompletedAssessment) {
         // New user - show confirmation success page first
-        redirectUrl = '/auth/confirmed'
+        redirectUrl = AUTH_REDIRECTS.NEW_USER_CONFIRMED
       } else if (isNewUser && hasCompletedAssessment) {
         // New user who already completed assessment (edge case)
-        redirectUrl = '/dashboard?welcome=true&new_user=true'
+        redirectUrl = AUTH_REDIRECTS.NEW_USER_WITH_ASSESSMENT
       } else if (!hasCompletedAssessment) {
         // Existing user who hasn't completed assessment yet
-        redirectUrl = '/dashboard/assessment'
+        redirectUrl = AUTH_REDIRECTS.USER_WITHOUT_ASSESSMENT
       } else {
         // Existing user who completed assessment - go to dashboard
-        redirectUrl = '/dashboard'
+        redirectUrl = AUTH_REDIRECTS.USER_WITH_ASSESSMENT
       }
 
       return NextResponse.redirect(new URL(redirectUrl, requestUrl.origin))
 
     } catch (error) {
       console.error('Auth callback exception:', error)
-      return NextResponse.redirect(new URL('/auth/login?error=Authentication failed', requestUrl.origin))
+      return NextResponse.redirect(new URL(`${AUTH_ROUTES.LOGIN}?error=Authentication failed`, requestUrl.origin))
     }
   }
 
   // No code parameter - invalid callback
-  return NextResponse.redirect(new URL('/auth/login?error=Invalid authentication callback', requestUrl.origin))
+  return NextResponse.redirect(new URL(`${AUTH_ROUTES.LOGIN}?error=Invalid authentication callback`, requestUrl.origin))
 }

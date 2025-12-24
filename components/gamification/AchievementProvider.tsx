@@ -25,7 +25,7 @@ interface AchievementProviderProps {
 }
 
 export function AchievementProvider({ children, autoCloseDelay = 5000 }: AchievementProviderProps) {
-  const [queue, setQueue] = useState<Achievement[]>([])
+  const [_queue, setQueue] = useState<Achievement[]>([])
   const [currentAchievement, setCurrentAchievement] = useState<Achievement | null>(null)
   const [isShowing, setIsShowing] = useState(false)
 

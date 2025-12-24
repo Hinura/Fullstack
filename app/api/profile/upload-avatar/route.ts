@@ -1,14 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { requireAuth } from '@/lib/api-middleware'
+import { logger } from '@/lib/logger'
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient()
-    const { data: { user }, error: userError } = await supabase.auth.getUser()
-
-    if (userError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const auth = await requireAuth(request)
+    if (auth.error) return auth.error
+    const { user, supabase } = auth
 
     const formData = await request.formData()
     const file = formData.get('avatar') as File
@@ -53,7 +51,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Upload new avatar
-    const { data: uploadData, error: uploadError } = await supabase.storage
+    const { error: uploadError } = await supabase.storage
       .from('avatars')
       .upload(fileName, file, {
         contentType: file.type,
@@ -61,7 +59,7 @@ export async function POST(request: NextRequest) {
       })
 
     if (uploadError) {
-      console.error('Upload error:', uploadError)
+      logger.error('Failed to upload avatar to storage', uploadError, { userId: user.id })
       return NextResponse.json({
         error: 'Failed to upload file'
       }, { status: 500 })
@@ -84,7 +82,7 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (updateError) {
-      console.error('Profile update error:', updateError)
+      logger.error('Failed to update profile with avatar URL', updateError, { userId: user.id })
       return NextResponse.json({
         error: 'Failed to update profile'
       }, { status: 500 })
@@ -97,7 +95,7 @@ export async function POST(request: NextRequest) {
     })
 
   } catch (error) {
-    console.error('Avatar upload error:', error)
+    logger.error('Avatar upload failed', error, { path: '/api/profile/upload-avatar' })
     return NextResponse.json({
       error: 'Internal server error'
     }, { status: 500 })

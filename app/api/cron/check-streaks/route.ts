@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
+import { logger } from '@/lib/logger'
 
 /**
  * Daily Streak Check Cron Job
@@ -20,7 +21,7 @@ export async function GET(request: Request) {
     const expectedAuth = `Bearer ${process.env.CRON_SECRET}`
 
     if (authHeader !== expectedAuth) {
-      console.error('Unauthorized cron attempt')
+      logger.error('Unauthorized cron attempt', undefined, { path: '/api/cron/check-streaks' })
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -34,7 +35,7 @@ export async function GET(request: Request) {
     // Get today's date for logging
     const today = new Date().toISOString().split('T')[0]
 
-    console.log(`Running streak check for ${today}. Checking for users inactive on ${yesterdayDate}`)
+    logger.info('Running streak check', { today, yesterdayDate })
 
     // Find users who were NOT active yesterday and have an active streak
     // (last_activity_date is older than yesterday AND streak_days > 0)
@@ -45,7 +46,7 @@ export async function GET(request: Request) {
       .gt('streak_days', 0)
 
     if (fetchError) {
-      console.error('Error fetching inactive users:', fetchError)
+      logger.error('Failed to fetch inactive users', fetchError)
       return NextResponse.json(
         { error: 'Failed to fetch inactive users', details: fetchError.message },
         { status: 500 }
@@ -53,7 +54,7 @@ export async function GET(request: Request) {
     }
 
     if (!inactiveUsers || inactiveUsers.length === 0) {
-      console.log('No inactive users found')
+      logger.info('No inactive users found')
       return NextResponse.json({
         success: true,
         message: 'No inactive users to process',
@@ -62,7 +63,7 @@ export async function GET(request: Request) {
       })
     }
 
-    console.log(`Found ${inactiveUsers.length} inactive users to process`)
+    logger.info('Found inactive users to process', { count: inactiveUsers.length })
 
     let freezesUsed = 0
     let streaksReset = 0
@@ -80,10 +81,10 @@ export async function GET(request: Request) {
           .eq('id', user.id)
 
         if (updateError) {
-          console.error(`Failed to use freeze for user ${user.id}:`, updateError)
+          logger.error('Failed to use freeze', updateError, { userId: user.id })
         } else {
           freezesUsed++
-          console.log(`Used freeze for user ${user.id}, streak maintained at ${user.streak_days}`)
+          logger.info('Used streak freeze', { userId: user.id, streakDays: user.streak_days })
         }
       } else {
         // No freeze available, reset streak
@@ -107,15 +108,15 @@ export async function GET(request: Request) {
           .eq('id', user.id)
 
         if (updateError) {
-          console.error(`Failed to reset streak for user ${user.id}:`, updateError)
+          logger.error('Failed to reset streak', updateError, { userId: user.id })
         } else {
           streaksReset++
-          console.log(`Reset streak for user ${user.id} from ${user.streak_days} to 0`)
+          logger.info('Reset streak', { userId: user.id, previousStreak: user.streak_days })
         }
       }
     }
 
-    console.log(`Streak check complete: ${freezesUsed} freezes used, ${streaksReset} streaks reset`)
+    logger.info('Streak check complete', { freezesUsed, streaksReset })
 
     return NextResponse.json({
       success: true,
@@ -127,7 +128,7 @@ export async function GET(request: Request) {
     })
 
   } catch (error) {
-    console.error('Cron job error:', error)
+    logger.error('Cron job failed', error, { path: '/api/cron/check-streaks' })
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

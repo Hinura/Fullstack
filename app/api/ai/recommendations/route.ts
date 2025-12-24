@@ -2,20 +2,23 @@ import { NextRequest, NextResponse } from "next/server";
 import { openai, defaultModel, hardCapTokens } from "@/lib/ai/openai";
 import { recommendationsPrompt } from "@/lib/ai/prompts";
 import { checkRate } from "@/lib/ai/guard";
-import { createClient } from "@/lib/supabase/server";
+import { requireAuth } from '@/lib/api-middleware';
+import { RATE_LIMITS } from "@/lib/constants/game-config";
+import { logger } from "@/lib/logger";
+import { toErrorResponse } from "@/lib/error-handler";
 
 export async function POST(req: NextRequest) {
   const ip = req.headers.get("x-forwarded-for") || "local";
-  if (!checkRate(ip, "recommendations", 10, 60_000)) {
+  if (!checkRate(ip, "recommendations", RATE_LIMITS.AI_RECOMMENDATIONS.MAX_REQUESTS, RATE_LIMITS.AI_RECOMMENDATIONS.WINDOW_MS)) {
     return NextResponse.json({ error: "Rate limit exceeded" }, { status: 429 });
   }
 
   const body = await req.json();
   const { origin } = body || {};
 
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const auth = await requireAuth(req)
+  if (auth.error) return auth.error
+  const { user, supabase } = auth
 
   // load profile for age
   const { data: profile } = await supabase
@@ -64,8 +67,9 @@ export async function POST(req: NextRequest) {
 
     const json = JSON.parse(completion.choices[0]?.message?.content ?? "{}");
     return NextResponse.json({ data: json });
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  } catch (e: any) {
-    return NextResponse.json({ error: "AI recommendations failed", detail: e.message }, { status: 500 });
+  } catch (error: unknown) {
+    logger.error("AI recommendations generation failed", error, { userId: user.id, ip });
+    const response = toErrorResponse(error);
+    return NextResponse.json(response, { status: response.statusCode });
   }
 }

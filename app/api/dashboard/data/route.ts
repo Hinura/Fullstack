@@ -1,14 +1,12 @@
-import { NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { NextResponse, NextRequest } from 'next/server'
+import { requireAuth } from '@/lib/api-middleware'
+import { calculateSkillLevel } from '@/lib/constants/game-config'
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const supabase = await createClient()
-    const { data: { user }, error: userError } = await supabase.auth.getUser()
-
-    if (userError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const auth = await requireAuth(request)
+    if (auth.error) return auth.error
+    const { user, supabase } = auth
 
     // Get user profile (created automatically by database trigger)
     let profile
@@ -88,14 +86,9 @@ export async function GET() {
 
     assessmentAttempts?.forEach((attempt) => {
       const percentage = attempt.score_percentage || 0
-      let skillLevel = 1
 
-      // Convert percentage to skill level (1-5) - same logic as assessment page
-      if (percentage >= 90) skillLevel = 5
-      else if (percentage >= 76) skillLevel = 4
-      else if (percentage >= 60) skillLevel = 3
-      else if (percentage >= 50) skillLevel = 2
-      else skillLevel = 1
+      // Convert percentage to skill level (1-5) using centralized function
+      const skillLevel = calculateSkillLevel(percentage)
 
       skillLevelsBySubject[attempt.subject] = {
         level: skillLevel,

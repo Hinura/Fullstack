@@ -1,21 +1,14 @@
-import { createClient } from '@/lib/supabase/server'
-import { NextResponse } from 'next/server'
+import { NextResponse, NextRequest } from 'next/server'
+import { requireAuth } from '@/lib/api-middleware'
 import { getTargetAge, getDifficultyDistribution, buildSelectionMetadata } from '@/lib/edl/selector'
 import type { Subject, Difficulty } from '@/lib/edl/types'
+import { shuffleArray } from '@/lib/utils/array'
 
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   try {
-    const supabase = await createClient()
-
-    // Get authenticated user
-    const { data: { user }, error: userError } = await supabase.auth.getUser()
-
-    if (userError || !user) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      )
-    }
+    const auth = await requireAuth(request)
+    if (auth.error) return auth.error
+    const { user, supabase } = auth
 
     // Parse query parameters
     const { searchParams } = new URL(request.url)
@@ -110,13 +103,13 @@ export async function GET(request: Request) {
         continue
       }
 
-      // Randomize and take required count
-      const shuffled = questions?.sort(() => Math.random() - 0.5) || []
+      // Randomize and take required count using Fisher-Yates algorithm
+      const shuffled = questions ? shuffleArray(questions) : []
       selectedQuestions.push(...shuffled.slice(0, count))
     }
 
-    // Final shuffle
-    const finalQuestions = selectedQuestions.sort(() => Math.random() - 0.5)
+    // Final shuffle using Fisher-Yates algorithm
+    const finalQuestions = shuffleArray(selectedQuestions)
 
     // Check if we got enough questions
     if (finalQuestions.length < Math.floor(limit * 0.5)) {
