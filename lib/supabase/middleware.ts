@@ -1,6 +1,7 @@
 // lib/supabase/middleware.ts
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
+import { AUTH_REDIRECTS } from '@/lib/auth-config'
 
 export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({
@@ -73,13 +74,13 @@ export async function updateSession(request: NextRequest) {
 
   // Protect /dashboard routes - redirect to login if not authenticated
   if (request.nextUrl.pathname.startsWith('/dashboard') && !user) {
-    const redirectUrl = new URL('/auth/login', request.url)
+    const redirectUrl = new URL(AUTH_REDIRECTS.UNAUTHENTICATED, request.url)
     return NextResponse.redirect(redirectUrl)
   }
 
   // Redirect authenticated users away from auth pages
   if (request.nextUrl.pathname.startsWith('/auth') && user) {
-    const redirectUrl = new URL('/dashboard', request.url)
+    const redirectUrl = new URL(AUTH_REDIRECTS.DEFAULT_AUTH_SUCCESS, request.url)
     return NextResponse.redirect(redirectUrl)
   }
 

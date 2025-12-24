@@ -2,10 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { openai, defaultModel, hardCapTokens } from "@/lib/ai/openai";
 import { insightsPrompt } from "@/lib/ai/prompts";
 import { checkRate } from "@/lib/ai/guard";
+import { RATE_LIMITS } from "@/lib/constants/game-config";
+import { logger } from "@/lib/logger";
+import { toErrorResponse } from "@/lib/error-handler";
 
 export async function POST(req: NextRequest) {
   const ip = req.headers.get("x-forwarded-for") || "local";
-  if (!checkRate(ip, "insights", 8, 60_000)) {
+  if (!checkRate(ip, "insights", RATE_LIMITS.AI_INSIGHTS.MAX_REQUESTS, RATE_LIMITS.AI_INSIGHTS.WINDOW_MS)) {
     return NextResponse.json({ error: "Rate limit exceeded" }, { status: 429 });
   }
 
@@ -28,8 +31,9 @@ export async function POST(req: NextRequest) {
 
     const json = JSON.parse(completion.choices[0]?.message?.content ?? "{}");
     return NextResponse.json({ data: json });
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  } catch (e: any) {
-    return NextResponse.json({ error: "AI insights failed", detail: e.message }, { status: 500 });
+  } catch (error: unknown) {
+    logger.error("AI insights generation failed", error, { ip });
+    const response = toErrorResponse(error);
+    return NextResponse.json(response, { status: response.statusCode });
   }
 }

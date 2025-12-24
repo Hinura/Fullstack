@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Card, CardContent } from '@/components/ui/card'
+import { CardContent } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
 import { LevelUpModal } from './LevelUpModal'
 

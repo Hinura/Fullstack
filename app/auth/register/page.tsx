@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Loader2 } from 'lucide-react'
+import { AUTH_REDIRECTS } from '@/lib/auth-config'
 
 export default function RegisterPage() {
 
@@ -103,7 +104,7 @@ export default function RegisterPage() {
 
         // Profile is automatically created by database trigger
         // Redirect to dashboard after successful signup
-        router.push('/dashboard')
+        router.push(AUTH_REDIRECTS.DEFAULT_AUTH_SUCCESS)
       }
     } catch {
       setError('An unexpected error occurred')
@@ -143,17 +144,35 @@ export default function RegisterPage() {
         <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-72 h-72 bg-warm-green/15 rounded-full blur-3xl"></div>
       </div>
 
-      <nav className="relative z-10 p-8">
-        <Link
-          href="/"
-          className="inline-flex items-center gap-3 text-charcoal/70 hover:text-coral transition-colors duration-300 rounded-full px-4 py-2 hover:bg-coral/10"
-        >
-          <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" />
-          </svg>
-          <span className="font-medium text-base">Back to Home</span>
-        </Link>
-      </nav>
+      <header className="relative z-10 border-b border-sage-blue/20 bg-cream/95 backdrop-blur supports-[backdrop-filter]:bg-cream/80">
+        <div className="container mx-auto px-6 lg:px-8">
+          <div className="flex h-20 items-center justify-between">
+            <Link href="/" className="flex items-center space-x-3 flex-shrink-0">
+              <div className="w-12 h-12 rounded-3xl bg-gradient-to-br from-coral to-sage-blue flex items-center justify-center shadow-lg">
+                <svg className="h-7 w-7 text-cream" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2.5}
+                    d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
+                  />
+                </svg>
+              </div>
+              <span className="font-bold text-2xl text-charcoal">Hinura</span>
+            </Link>
+
+            <Link
+              href="/"
+              className="inline-flex items-center gap-2 text-charcoal/70 hover:text-coral transition-colors duration-300 rounded-full px-4 py-2 hover:bg-coral/10"
+            >
+              <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" />
+              </svg>
+              <span className="font-medium text-base">Back to Home</span>
+            </Link>
+          </div>
+        </div>
+      </header>
 
       <div className="relative z-10 flex items-center justify-center px-6 py-8">
         <Card className="w-full max-w-lg shadow-2xl border-2 border-warm-green/20 bg-cream/95 backdrop-blur-md rounded-3xl overflow-hidden">
@@ -175,12 +194,12 @@ export default function RegisterPage() {
           </CardHeader>
 
           <CardContent className="space-y-10 px-10 pb-12">
-            {error && (
+            {error && !showEmailConfirmation && (
               <Alert className="border-red-200 bg-red-50">
                 <AlertDescription className="text-red-700">{error}</AlertDescription>
               </Alert>
             )}
-            {showEmailConfirmation && (
+            {showEmailConfirmation ? (
               <Alert className="border-2 border-warm-green/30 bg-warm-green/10 backdrop-blur-sm">
                 <div className="flex items-start space-x-3">
                   <div className="flex-shrink-0">
@@ -235,7 +254,8 @@ export default function RegisterPage() {
                   </div>
                 </div>
               </Alert>
-            )}
+            ) : (
+              <>
             <form onSubmit={handleSignUp} className="space-y-8">
               <div className="space-y-4">
                 <label htmlFor="fullName" className="text-base font-semibold text-charcoal">
@@ -538,6 +558,8 @@ export default function RegisterPage() {
                 </Link>
               </p>
             </div>
+            </>
+            )}
           </CardContent>
         </Card>
       </div>

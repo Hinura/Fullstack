@@ -1,21 +1,13 @@
 // app/api/edl/status/route.ts
-import { createClient } from '@/lib/supabase/server'
-import { NextResponse } from 'next/server'
+import { NextResponse, NextRequest } from 'next/server'
+import { requireAuth } from '@/lib/api-middleware'
 import { EDLStatusResponse } from '@/lib/edl/types'
 
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   try {
-    const supabase = await createClient()
-
-    // Get authenticated user
-    const { data: { user }, error: userError } = await supabase.auth.getUser()
-
-    if (userError || !user) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      )
-    }
+    const auth = await requireAuth(request)
+    if (auth.error) return auth.error
+    const { user, supabase } = auth
 
     // Parse query parameters
     const { searchParams } = new URL(request.url)

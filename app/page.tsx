@@ -6,9 +6,9 @@ export default function HomePage() {
   return (
     <div className="min-h-screen bg-cream">
       <header className="sticky top-0 z-50 w-full border-b border-sage-blue/20 bg-cream/95 backdrop-blur supports-[backdrop-filter]:bg-cream/80">
-        <div className="container mx-auto px-4">
-          <div className="flex h-20 items-center justify-between">
-            <div className="flex items-center space-x-3">
+        <div className="container mx-auto px-6 lg:px-8">
+          <div className="flex h-20 items-center justify-between gap-8">
+            <div className="flex items-center space-x-3 flex-shrink-0">
               <div className="w-12 h-12 rounded-3xl bg-gradient-to-br from-coral to-sage-blue flex items-center justify-center shadow-lg">
                 <svg className="h-7 w-7 text-cream" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path
@@ -22,46 +22,40 @@ export default function HomePage() {
               <span className="font-bold text-2xl text-charcoal">Hinura</span>
             </div>
 
-            <nav className="hidden md:flex items-center space-x-10">
+            <nav className="hidden md:flex items-center space-x-8 lg:space-x-12 flex-1 justify-center">
               <Link
                 href="#features"
-                className="text-base font-medium text-charcoal hover:text-coral transition-colors duration-300 rounded-full px-4 py-2 hover:bg-coral/10"
+                className="text-base font-medium text-charcoal hover:text-coral transition-colors duration-300 rounded-full px-5 lg:px-6 py-2.5 hover:bg-coral/10"
               >
                 Features
               </Link>
               <Link
                 href="#how-it-works"
-                className="text-base font-medium text-charcoal hover:text-coral transition-colors duration-300 rounded-full px-4 py-2 hover:bg-coral/10"
+                className="text-base font-medium text-charcoal hover:text-coral transition-colors duration-300 rounded-full px-5 lg:px-6 py-2.5 hover:bg-coral/10"
               >
                 How It Works
               </Link>
               <Link
-                href="#pricing"
-                className="text-base font-medium text-charcoal hover:text-coral transition-colors duration-300 rounded-full px-4 py-2 hover:bg-coral/10"
-              >
-                Pricing
-              </Link>
-              <Link
                 href="#about"
-                className="text-base font-medium text-charcoal hover:text-coral transition-colors duration-300 rounded-full px-4 py-2 hover:bg-coral/10"
+                className="text-base font-medium text-charcoal hover:text-coral transition-colors duration-300 rounded-full px-5 lg:px-6 py-2.5 hover:bg-coral/10"
               >
                 About
               </Link>
             </nav>
 
-            <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-3 lg:space-x-4 flex-shrink-0">
               <Button
                 variant="ghost"
                 size="lg"
                 asChild
-                className="hidden md:inline-flex rounded-full text-charcoal hover:bg-sage-blue/10 hover:text-sage-blue"
+                className="hidden md:inline-flex rounded-full text-charcoal hover:bg-sage-blue/10 hover:text-sage-blue px-6"
               >
                 <Link href="/auth/login">Sign In</Link>
               </Button>
               <Button
                 size="lg"
                 asChild
-                className="rounded-full bg-gradient-to-r from-coral to-warm-green text-cream hover:shadow-lg hover:scale-105 transition-all duration-300 px-8"
+                className="rounded-full bg-gradient-to-r from-coral to-warm-green text-cream hover:shadow-lg hover:scale-105 transition-all duration-300 px-6 lg:px-8"
               >
                 <Link href="/auth/register">Get Started</Link>
               </Button>
@@ -108,7 +102,7 @@ export default function HomePage() {
               </p>
             </div>
 
-            <div className="flex flex-col sm:flex-row gap-8 justify-center pt-16">
+            <div className="flex justify-center pt-16">
               <Button
                 size="lg"
                 className="text-xl px-12 py-8 rounded-full shadow-xl hover:shadow-2xl transition-all duration-500 hover:scale-105 bg-gradient-to-r from-coral to-warm-green hover:from-coral/90 hover:to-warm-green/90 text-cream font-medium"
@@ -118,24 +112,6 @@ export default function HomePage() {
                   Start Free Trial
                   <svg className="ml-3 h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M17 8l4 4m0 0l-4 4m4-4H3" />
-                  </svg>
-                </Link>
-              </Button>
-              <Button
-                size="lg"
-                variant="outline"
-                className="text-xl px-12 py-8 rounded-full bg-cream/90 backdrop-blur-sm hover:bg-cream border-2 border-sage-blue/30 hover:border-sage-blue text-charcoal hover:text-sage-blue transition-all duration-500 hover:scale-105 font-medium"
-                asChild
-              >
-                <Link href="/demo">
-                  Watch Demo
-                  <svg className="ml-3 h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2.5}
-                      d="M14.828 14.828a4 4 0 01-5.656 0M9 10h1m4 0h1m-6 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                    />
                   </svg>
                 </Link>
               </Button>
@@ -406,6 +382,91 @@ export default function HomePage() {
         </div>
       </section>
 
+      <section id="about" className="py-32 lg:py-40 bg-cream">
+        <div className="container mx-auto px-4">
+          <div className="max-w-5xl mx-auto">
+            <div className="text-center mb-20">
+              <div className="inline-flex items-center rounded-full border-2 border-coral/30 bg-coral/10 px-8 py-4 text-base font-semibold text-coral mb-8">
+                <svg className="mr-3 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2.5}
+                    d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+                About Hinura
+              </div>
+              <h2 className="text-5xl lg:text-6xl font-bold mb-8 text-balance text-charcoal font-rounded">
+                Our Mission
+              </h2>
+              <p className="text-2xl text-charcoal/70 max-w-4xl mx-auto text-pretty leading-relaxed">
+                Empowering every student to reach their full potential through personalized, adaptive learning
+              </p>
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-12 mb-16">
+              <Card className="border-2 border-sage-blue/20 hover:border-sage-blue/40 transition-all duration-500 hover:shadow-2xl group bg-gradient-to-br from-cream to-sage-blue/5 rounded-3xl overflow-hidden">
+                <CardHeader className="pb-6 pt-10">
+                  <div className="w-16 h-16 rounded-3xl bg-gradient-to-br from-sage-blue to-warm-green flex items-center justify-center mb-6 group-hover:scale-110 group-hover:rotate-6 transition-all duration-500 shadow-xl">
+                    <svg className="h-8 w-8 text-cream" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2.5}
+                        d="M15 12a3 3 0 11-6 0 3 3 0 016 0z M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                      />
+                    </svg>
+                  </div>
+                  <CardTitle className="text-3xl font-bold text-charcoal font-rounded">Our Vision</CardTitle>
+                </CardHeader>
+                <CardContent className="px-8 pb-10">
+                  <CardDescription className="text-lg leading-relaxed text-charcoal/70">
+                    We envision a world where every child has access to personalized education that adapts to their
+                    unique learning style, helping them discover and develop their full potential.
+                  </CardDescription>
+                </CardContent>
+              </Card>
+
+              <Card className="border-2 border-coral/20 hover:border-coral/40 transition-all duration-500 hover:shadow-2xl group bg-gradient-to-br from-cream to-coral/5 rounded-3xl overflow-hidden">
+                <CardHeader className="pb-6 pt-10">
+                  <div className="w-16 h-16 rounded-3xl bg-gradient-to-br from-coral to-warm-green flex items-center justify-center mb-6 group-hover:scale-110 group-hover:rotate-6 transition-all duration-500 shadow-xl">
+                    <svg className="h-8 w-8 text-cream" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2.5}
+                        d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
+                      />
+                    </svg>
+                  </div>
+                  <CardTitle className="text-3xl font-bold text-charcoal font-rounded">Our Values</CardTitle>
+                </CardHeader>
+                <CardContent className="px-8 pb-10">
+                  <CardDescription className="text-lg leading-relaxed text-charcoal/70">
+                    We believe in making education accessible, engaging, and effective. Every student deserves a
+                    learning experience that celebrates their progress and nurtures their curiosity.
+                  </CardDescription>
+                </CardContent>
+              </Card>
+            </div>
+
+            <div className="bg-gradient-to-br from-warm-green/10 to-sage-blue/10 rounded-3xl p-10 lg:p-12 border-2 border-warm-green/20">
+              <h3 className="text-3xl lg:text-4xl font-bold text-charcoal mb-6 font-rounded">Why We Built Hinura</h3>
+              <p className="text-xl text-charcoal/70 leading-relaxed mb-6">
+                Traditional education often follows a one-size-fits-all approach, leaving many students behind or
+                unchallenged. We created Hinura to solve this problem using adaptive learning technology.
+              </p>
+              <p className="text-xl text-charcoal/70 leading-relaxed">
+                Our platform analyzes each student&apos;s performance in real-time and adjusts the difficulty accordingly,
+                ensuring they&apos;re always learning at the optimal level. Combined with gamification elements, we make
+                learning not just effective, but genuinely enjoyable.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <section className="py-32 lg:py-40 bg-gradient-to-br from-coral via-sage-blue to-warm-green text-cream relative overflow-hidden">
         <div className="absolute inset-0 opacity-20">
           <div className="absolute top-10 left-10 w-80 h-80 bg-cream/20 rounded-full blur-3xl"></div>
@@ -441,101 +502,36 @@ export default function HomePage() {
         </div>
       </section>
 
-      <footer className="py-20 bg-charcoal/5 border-t border-sage-blue/20">
+      <footer className="py-12 bg-charcoal/5 border-t border-sage-blue/20">
         <div className="container mx-auto px-4">
-          <div className="grid md:grid-cols-4 gap-10 mb-12">
-            <div className="space-y-6">
-              <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-coral to-sage-blue flex items-center justify-center">
-                  <svg className="h-6 w-6 text-cream" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2.5}
-                      d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
-                    />
-                  </svg>
-                </div>
-                <span className="font-bold text-2xl text-charcoal font-rounded">Hinura</span>
+          <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-coral to-sage-blue flex items-center justify-center">
+                <svg className="h-6 w-6 text-cream" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2.5}
+                    d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
+                  />
+                </svg>
               </div>
-              <p className="text-base text-charcoal/70">Adaptive learning platform for students aged 7-18.</p>
+              <span className="font-bold text-xl text-charcoal font-rounded">Hinura</span>
             </div>
 
-            <div className="space-y-6">
-              <h4 className="font-semibold text-lg text-charcoal font-rounded">Product</h4>
-              <div className="space-y-3 text-base">
-                <Link
-                  href="#features"
-                  className="block text-charcoal/70 hover:text-coral transition-colors duration-300 rounded-lg px-2 py-1 hover:bg-coral/10"
-                >
-                  Features
-                </Link>
-                <Link
-                  href="#pricing"
-                  className="block text-charcoal/70 hover:text-coral transition-colors duration-300 rounded-lg px-2 py-1 hover:bg-coral/10"
-                >
-                  Pricing
-                </Link>
-                <Link
-                  href="/demo"
-                  className="block text-charcoal/70 hover:text-coral transition-colors duration-300 rounded-lg px-2 py-1 hover:bg-coral/10"
-                >
-                  Demo
-                </Link>
-              </div>
-            </div>
+            <p className="text-sm text-charcoal/70">© 2024 Hinura. Built for thesis project.</p>
 
-            <div className="space-y-6">
-              <h4 className="font-semibold text-lg text-charcoal font-rounded">Company</h4>
-              <div className="space-y-3 text-base">
-                <Link
-                  href="/about"
-                  className="block text-charcoal/70 hover:text-coral transition-colors duration-300 rounded-lg px-2 py-1 hover:bg-coral/10"
-                >
-                  About
-                </Link>
-                <Link
-                  href="/contact"
-                  className="block text-charcoal/70 hover:text-coral transition-colors duration-300 rounded-lg px-2 py-1 hover:bg-coral/10"
-                >
-                  Contact
-                </Link>
-                <Link
-                  href="/blog"
-                  className="block text-charcoal/70 hover:text-coral transition-colors duration-300 rounded-lg px-2 py-1 hover:bg-coral/10"
-                >
-                  Blog
-                </Link>
-              </div>
+            <div className="flex items-center space-x-6 text-sm">
+              <Link href="/privacy" className="text-charcoal/70 hover:text-coral transition-colors duration-300">
+                Privacy
+              </Link>
+              <Link href="/terms" className="text-charcoal/70 hover:text-coral transition-colors duration-300">
+                Terms
+              </Link>
+              <Link href="/contact" className="text-charcoal/70 hover:text-coral transition-colors duration-300">
+                Contact
+              </Link>
             </div>
-
-            <div className="space-y-6">
-              <h4 className="font-semibold text-lg text-charcoal font-rounded">Support</h4>
-              <div className="space-y-3 text-base">
-                <Link
-                  href="/help"
-                  className="block text-charcoal/70 hover:text-coral transition-colors duration-300 rounded-lg px-2 py-1 hover:bg-coral/10"
-                >
-                  Help Center
-                </Link>
-                <Link
-                  href="/privacy"
-                  className="block text-charcoal/70 hover:text-coral transition-colors duration-300 rounded-lg px-2 py-1 hover:bg-coral/10"
-                >
-                  Privacy
-                </Link>
-                <Link
-                  href="/terms"
-                  className="block text-charcoal/70 hover:text-coral transition-colors duration-300 rounded-lg px-2 py-1 hover:bg-coral/10"
-                >
-                  Terms
-                </Link>
-              </div>
-            </div>
-          </div>
-
-          <div className="border-t border-sage-blue/20 pt-10 text-center">
-            <p className="text-base text-charcoal/70">© 2024 Hinura. Built for thesis project.</p>
           </div>
         </div>
       </footer>

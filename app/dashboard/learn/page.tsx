@@ -2,7 +2,6 @@
 
 import { useSearchParams, useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
-import { Button } from "@/components/ui/button"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Loader2 } from "lucide-react"
 import DashboardNavigation from "@/components/DashboardNavigation"

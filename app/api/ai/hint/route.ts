@@ -2,10 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { openai, defaultModel, hardCapTokens } from "@/lib/ai/openai";
 import { hintPrompt } from "@/lib/ai/prompts";
 import { checkRate, getCache, setCache } from "@/lib/ai/guard";
+import { RATE_LIMITS, CACHE_CONFIG } from "@/lib/constants/game-config";
+import { logger } from "@/lib/logger";
+import { toErrorResponse } from "@/lib/error-handler";
 
 export async function POST(req: NextRequest) {
   const ip = req.headers.get("x-forwarded-for") || "local";
-  if (!checkRate(ip, "hint", 30, 60_000)) {
+  if (!checkRate(ip, "hint", RATE_LIMITS.AI_HINT.MAX_REQUESTS, RATE_LIMITS.AI_HINT.WINDOW_MS)) {
     return NextResponse.json({ error: "Rate limit exceeded" }, { status: 429 });
   }
 
@@ -35,10 +38,11 @@ export async function POST(req: NextRequest) {
 
     const text = completion.choices[0]?.message?.content ?? "{}";
     const json = JSON.parse(text);
-    setCache(key, json, 5 * 60_000); // 5 min
+    setCache(key, json, CACHE_CONFIG.AI_HINT_TTL);
     return NextResponse.json({ data: json });
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  } catch (e: any) {
-    return NextResponse.json({ error: "AI hint failed", detail: e.message }, { status: 500 });
+  } catch (error: unknown) {
+    logger.error("AI hint generation failed", error, { subject, ip });
+    const response = toErrorResponse(error);
+    return NextResponse.json(response, { status: response.statusCode });
   }
 }

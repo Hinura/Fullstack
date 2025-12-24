@@ -1,7 +1,7 @@
 "use client"
 
 import { useSearchParams, useRouter } from "next/navigation"
-import { useEffect, useRef, useState, Suspense } from "react"
+import { useEffect, useState, Suspense } from "react"
 import { Button } from "@/components/ui/button"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Loader2, CheckCircle2, XCircle, ArrowLeft } from "lucide-react"
@@ -197,7 +197,7 @@ function PracticeContent() {
       if (data.data?.edl_update) {
         setEdlUpdate(data.data.edl_update)
       }
-    } catch (error) {
+    } catch {
       // Don't prevent the quiz from completing, just log the error silently
     }
   }

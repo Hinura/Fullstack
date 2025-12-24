@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
-import { getAgeAdaptation, getAgeAppropriateEmojis } from "@/lib/age-adaptations"
+import { getAgeAppropriateEmojis } from "@/lib/age-adaptations"
 import { ThemeToggle } from "@/components/theme-toggle"
 
 interface UserData {
@@ -79,7 +79,6 @@ export default function DashboardNavigation({ userData }: DashboardNavigationPro
   const isActive = (path: string) => pathname === path
 
   // Get age-based adaptations if user data is available
-  const ageAdaptation = user ? getAgeAdaptation(user.age || null) : null
   const ageEmojis = user ? getAgeAppropriateEmojis(user.age || null) : null
 
   return (
